@@ -4,9 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Simulador de Algoritmo Genético</title>
-
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -17,14 +15,31 @@
     </header>
 
     <main>
-        <h2>Bem-vindo ao simulador!</h2>
-        <p>
-            Esta aplicação utilizará um algoritmo genético
-            para selecionar projetos que maximizem os
-            benefícios sem ultrapassar o orçamento.
-        </p>
+        <section>
+            <h2>Projetos disponíveis</h2>
 
-        <button id="btnTeste">Testar JavaScript</button>
+            <p>
+                Projetos que poderão ser selecionados
+                pelo algoritmo genético.
+            </p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Projeto</th>
+                        <th>Custo</th>
+                        <th>Benefício</th>
+                    </tr>
+                </thead>
+
+                <tbody id="tabelaProjetos"></tbody>
+            </table>
+        </section>
+
+        <section>
+            <h2>Orçamento disponível</h2>
+            <p id="orcamento"></p>
+        </section>
     </main>
 
     <script src="script.js"></script>

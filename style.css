@@ -25,6 +25,36 @@ main {
     border-radius: 12px;
 }
 
+section {
+    margin-bottom: 30px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th, td {
+    padding: 14px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+th {
+    background-color: #e9eef5;
+}
+
+tbody tr:hover {
+    background-color: #f3f6fb;
+}
+
+#orcamento {
+    font-size: 24px;
+    font-weight: bold;
+    color: #17365d;
+}
+
 button {
     background-color: #2563eb;
     color: white;
