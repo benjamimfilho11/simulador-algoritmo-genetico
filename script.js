@@ -1,6 +1,7 @@
 
 "use strict";
 
+// Projetos iniciais e orçamento disponível
 const projetos = [
     {
         nome: "Melhoria da iluminação",
@@ -26,6 +27,7 @@ const projetos = [
 
 let orcamento = 7000;
 
+// Mostra os projetos e o orçamento na tela
 function exibirProjetos() {
     const tabela = document.getElementById("tabelaProjetos");
 
@@ -61,3 +63,67 @@ function exibirProjetos() {
 }
 
 exibirProjetos();
+
+// Configurações iniciais da população
+let tamanhoPopulacao = 5;
+let semente = 42;
+let estadoAleatorio = semente;
+
+// Gera números aleatórios usando a semente
+function numeroAleatorio() {
+    estadoAleatorio = (
+        Math.imul(1664525, estadoAleatorio) + 1013904223
+    ) >>> 0;
+
+    return estadoAleatorio / 4294967296;
+}
+
+// Cria um cromossomo com genes 0 ou 1
+function gerarCromossomo() {
+    const cromossomo = [];
+
+    for (let i = 0; i < projetos.length; i++) {
+        const gene = numeroAleatorio() < 0.5 ? 0 : 1;
+        cromossomo.push(gene);
+    }
+
+    return cromossomo;
+}
+
+// Gera a quantidade de indivíduos definida
+function gerarPopulacaoInicial() {
+    const populacao = [];
+
+    for (let i = 0; i < tamanhoPopulacao; i++) {
+        populacao.push(gerarCromossomo());
+    }
+
+    return populacao;
+}
+
+// Mostra os cromossomos da população na tabela
+function exibirPopulacao(populacao) {
+    const tabela = document.getElementById("tabelaPopulacao");
+
+    tabela.innerHTML = "";
+
+    populacao.forEach(function(cromossomo, indice) {
+        const linha = document.createElement("tr");
+
+        const colunaIndice = document.createElement("td");
+        colunaIndice.textContent = indice + 1;
+
+        const colunaCromossomo = document.createElement("td");
+        colunaCromossomo.textContent = cromossomo.join("");
+
+        linha.appendChild(colunaIndice);
+        linha.appendChild(colunaCromossomo);
+
+        tabela.appendChild(linha);
+    });
+}
+
+// Cria e exibe a população inicial
+const populacaoInicial = gerarPopulacaoInicial();
+
+exibirPopulacao(populacaoInicial);
