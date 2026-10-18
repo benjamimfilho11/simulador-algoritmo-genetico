@@ -29,6 +29,11 @@ section {
     margin-bottom: 30px;
 }
 
+.tabela-container {
+    width: 100%;
+    overflow-x: auto;
+}
+
 table {
     width: 100%;
     border-collapse: collapse;
@@ -66,4 +71,20 @@ button {
 
 button:hover {
     background-color: #1d4ed8;
+}
+
+@media (max-width: 600px) {
+    header {
+        padding: 20px;
+    }
+
+    main {
+        margin: 20px 10px;
+        padding: 20px;
+    }
+
+    th, td {
+        padding: 10px;
+        font-size: 14px;
+    }
 }

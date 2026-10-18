@@ -33,7 +33,7 @@ function exibirProjetos() {
 
     tabela.innerHTML = "";
 
-    projetos.forEach(function(projeto, indice) {
+    projetos.forEach(function(projeto) {
         const linha = document.createElement("tr");
 
         const colunaNome = document.createElement("td");
@@ -62,14 +62,12 @@ function exibirProjetos() {
         });
 }
 
-exibirProjetos();
-
 // Configurações iniciais da população
 let tamanhoPopulacao = 5;
 let semente = 42;
 let estadoAleatorio = semente;
 
-// Gera números aleatórios usando a semente
+// Gera números pseudoaleatórios usando a semente
 function numeroAleatorio() {
     estadoAleatorio = (
         Math.imul(1664525, estadoAleatorio) + 1013904223
@@ -90,40 +88,118 @@ function gerarCromossomo() {
     return cromossomo;
 }
 
-// Gera a quantidade de indivíduos definida
+// Calcula os dados de um cromossomo
+function avaliarCromossomo(cromossomo) {
+    let custoTotal = 0;
+    let beneficioTotal = 0;
+    const selecionados = [];
+
+    cromossomo.forEach(function(gene, indice) {
+        if (gene === 1) {
+            custoTotal += projetos[indice].custo;
+            beneficioTotal += projetos[indice].beneficio;
+            selecionados.push(projetos[indice].nome);
+        }
+    });
+
+    return {
+        cromossomo: cromossomo.join(""),
+        projetosSelecionados: selecionados,
+        custoTotal: custoTotal,
+        beneficioTotal: beneficioTotal,
+        saldo: orcamento - custoTotal,
+        viavel: custoTotal <= orcamento
+    };
+}
+
+// Remove projetos até respeitar o orçamento
+function repararCromossomo(cromossomo) {
+    const reparado = [...cromossomo];
+
+    while (avaliarCromossomo(reparado).custoTotal > orcamento) {
+        let indiceRemover = -1;
+        let menorRazao = Infinity;
+
+        reparado.forEach(function(gene, indice) {
+            if (gene === 1) {
+                const razao =
+                    projetos[indice].beneficio / projetos[indice].custo;
+
+                if (razao < menorRazao) {
+                    menorRazao = razao;
+                    indiceRemover = indice;
+                }
+            }
+        });
+
+        if (indiceRemover === -1) {
+            break;
+        }
+
+        reparado[indiceRemover] = 0;
+    }
+
+    return reparado;
+}
+
+// Calcula a aptidão após a reparação
+function calcularAptidao(cromossomo) {
+    const reparado = repararCromossomo(cromossomo);
+    const resultado = avaliarCromossomo(reparado);
+
+    return {
+        ...resultado,
+        aptidao: resultado.beneficioTotal
+    };
+}
+
+// Gera a população inicial já reparada
 function gerarPopulacaoInicial() {
     const populacao = [];
 
     for (let i = 0; i < tamanhoPopulacao; i++) {
-        populacao.push(gerarCromossomo());
+        const cromossomo = gerarCromossomo();
+        const reparado = repararCromossomo(cromossomo);
+
+        populacao.push(reparado);
     }
 
     return populacao;
 }
 
-// Mostra os cromossomos da população na tabela
+// Mostra os indivíduos e suas aptidões na tabela
 function exibirPopulacao(populacao) {
     const tabela = document.getElementById("tabelaPopulacao");
 
     tabela.innerHTML = "";
 
     populacao.forEach(function(cromossomo, indice) {
+        const resultado = calcularAptidao(cromossomo);
         const linha = document.createElement("tr");
 
-        const colunaIndice = document.createElement("td");
-        colunaIndice.textContent = indice + 1;
+        const valores = [
+            indice + 1,
+            resultado.cromossomo,
+            resultado.custoTotal.toLocaleString("pt-BR", {
+                style: "currency",
+                currency: "BRL"
+            }),
+            resultado.beneficioTotal,
+            resultado.aptidao
+        ];
 
-        const colunaCromossomo = document.createElement("td");
-        colunaCromossomo.textContent = cromossomo.join("");
-
-        linha.appendChild(colunaIndice);
-        linha.appendChild(colunaCromossomo);
+        valores.forEach(function(valor) {
+            const coluna = document.createElement("td");
+            coluna.textContent = valor;
+            linha.appendChild(coluna);
+        });
 
         tabela.appendChild(linha);
     });
 }
 
-// Cria e exibe a população inicial
+exibirProjetos();
+
 const populacaoInicial = gerarPopulacaoInicial();
 
 exibirPopulacao(populacaoInicial);
