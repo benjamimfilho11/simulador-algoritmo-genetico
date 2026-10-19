@@ -255,3 +255,48 @@ exibirPopulacao(populacaoInicial);
 // Seleciona dois pais em torneios independentes
 const pai1 = selecionarPorTorneio(populacaoInicial, tamanhoTorneio);
 const pai2 = selecionarPorTorneio(populacaoInicial, tamanhoTorneio);
+
+let taxaCruzamento = 80;
+let taxaMutacao = 5;
+
+// Realiza o cruzamento de um ponto entre dois pais
+function cruzarCromossomos(pai1, pai2, taxa = taxaCruzamento, corteForcado = null) {
+    let filho1 = [...pai1]; // Copia os genes sem alterar o pai original
+    let filho2 = [...pai2];
+
+    if (numeroAleatorio() < taxa / 100) {
+        const pontoCorte = corteForcado !== null
+            ? corteForcado
+            : 1 + sortearIndice(pai1.length - 1);
+
+        filho1 = [
+            ...pai1.slice(0, pontoCorte),
+            ...pai2.slice(pontoCorte)
+        ];
+
+        filho2 = [
+            ...pai2.slice(0, pontoCorte),
+            ...pai1.slice(pontoCorte)
+        ];
+    }
+
+    return [filho1, filho2];
+}
+
+// Aplica mutação individualmente em cada gene
+function mutarCromossomo(cromossomo, taxa = taxaMutacao, indicesForcados = null) {
+    const mutado = [...cromossomo];
+
+    for (let i = 0; i < mutado.length; i++) {
+        const deveMutar = indicesForcados !== null
+            ? indicesForcados.includes(i)
+            : numeroAleatorio() < taxa / 100;
+
+        if (deveMutar) {
+            mutado[i] = mutado[i] === 0 ? 1 : 0;
+        }
+    }
+
+    return mutado;
+}
+
