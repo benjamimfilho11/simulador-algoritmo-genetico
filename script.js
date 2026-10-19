@@ -64,6 +64,7 @@ function exibirProjetos() {
 
 // Configurações iniciais da população
 let tamanhoPopulacao = 5;
+let tamanhoTorneio = 2;
 let semente = 42;
 let estadoAleatorio = semente;
 
@@ -198,8 +199,59 @@ function exibirPopulacao(populacao) {
     });
 }
 
+// Sorteia um índice válido da população
+function sortearIndice(limite) {
+    return Math.floor(numeroAleatorio() * limite);
+}
+
+// Seleciona um indivíduo por torneio
+function selecionarPorTorneio(populacao, tamanhoTorneio) {
+    const candidatos = [];
+
+    // Sorteia os candidatos sem repetir índices
+    while (candidatos.length < tamanhoTorneio) {
+        const indice = sortearIndice(populacao.length);
+
+        if (!candidatos.includes(indice)) {
+            candidatos.push(indice);
+        }
+    }
+
+    // Considera o primeiro candidato como vencedor inicial
+    let indiceVencedor = candidatos[0];
+    let melhorAptidao = calcularAptidao(
+        populacao[indiceVencedor]
+    ).aptidao;
+
+    // Compara as aptidões para encontrar o vencedor
+    for (let i = 1; i < candidatos.length; i++) {
+        const indiceAtual = candidatos[i];
+
+        const aptidaoAtual = calcularAptidao(
+            populacao[indiceAtual]
+        ).aptidao;
+
+        if (
+            aptidaoAtual > melhorAptidao ||
+            (
+                aptidaoAtual === melhorAptidao &&
+                indiceAtual < indiceVencedor
+            )
+        ) {
+            indiceVencedor = indiceAtual;
+            melhorAptidao = aptidaoAtual;
+        }
+    }
+
+    return [...populacao[indiceVencedor]];
+}
+
 exibirProjetos();
 
 const populacaoInicial = gerarPopulacaoInicial();
 
 exibirPopulacao(populacaoInicial);
+
+// Seleciona dois pais em torneios independentes
+const pai1 = selecionarPorTorneio(populacaoInicial, tamanhoTorneio);
+const pai2 = selecionarPorTorneio(populacaoInicial, tamanhoTorneio);
