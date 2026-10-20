@@ -252,10 +252,6 @@ const populacaoInicial = gerarPopulacaoInicial();
 
 exibirPopulacao(populacaoInicial);
 
-// Seleciona dois pais em torneios independentes
-const pai1 = selecionarPorTorneio(populacaoInicial, tamanhoTorneio);
-const pai2 = selecionarPorTorneio(populacaoInicial, tamanhoTorneio);
-
 let taxaCruzamento = 80;
 let taxaMutacao = 5;
 
@@ -300,3 +296,136 @@ function mutarCromossomo(cromossomo, taxa = taxaMutacao, indicesForcados = null)
     return mutado;
 }
 
+
+let quantidadeElite = 1;
+let numeroGeracoes = 50;
+
+// Identifica os melhores indivíduos da população
+function selecionarElite(populacao, quantidade) {
+    const avaliados = populacao.map(function(cromossomo, indice) {
+        return {
+            indice: indice,
+            cromossomo: cromossomo,
+            aptidao: calcularAptidao(cromossomo).aptidao
+        };
+    });
+
+    avaliados.sort(function(a, b) {
+        return b.aptidao - a.aptidao || a.indice - b.indice;
+    });
+
+    return avaliados
+        .slice(0, quantidade)
+        .map(function(individuo) {
+            return [...individuo.cromossomo];
+        });
+}
+
+
+// Forma uma nova geração a partir da população anterior
+function gerarProximaGeracao(populacaoAnterior) {
+    const novaPopulacao = selecionarElite(
+        populacaoAnterior,
+        quantidadeElite
+    );
+
+    while (novaPopulacao.length < populacaoAnterior.length) {
+        const primeiroPai = selecionarPorTorneio(
+            populacaoAnterior,
+            tamanhoTorneio
+        );
+
+        const segundoPai = selecionarPorTorneio(
+            populacaoAnterior,
+            tamanhoTorneio
+        );
+
+        const filhos = cruzarCromossomos(
+            primeiroPai,
+            segundoPai
+        );
+
+        const primeiroFilho = repararCromossomo(
+            mutarCromossomo(filhos[0])
+        );
+
+        const segundoFilho = repararCromossomo(
+            mutarCromossomo(filhos[1])
+        );
+
+        novaPopulacao.push(primeiroFilho);
+
+        if (novaPopulacao.length < populacaoAnterior.length) {
+            novaPopulacao.push(segundoFilho);
+        }
+    }
+
+    return novaPopulacao;
+}
+
+
+// Calcula as informações de uma geração
+function avaliarGeracao(populacao, numero) {
+    const resultados = populacao.map(function(cromossomo) {
+        return calcularAptidao(cromossomo);
+    });
+
+    const somaAptidoes = resultados.reduce(function(soma, resultado) {
+        return soma + resultado.aptidao;
+    }, 0);
+
+    const melhor = resultados.reduce(function(atual, resultado) {
+        return resultado.aptidao > atual.aptidao
+            ? resultado
+            : atual;
+    });
+
+    return {
+        geracao: numero,
+        melhorAptidao: melhor.aptidao,
+        aptidaoMedia: somaAptidoes / populacao.length,
+        melhorIndividuo: melhor
+    };
+}
+
+
+
+// Executa a evolução até o limite de gerações
+function executarAlgoritmo() {
+    estadoAleatorio = semente;
+
+    let populacao = gerarPopulacaoInicial();
+    const historico = [];
+
+    let melhorGlobal = null;
+
+    for (let geracao = 0; geracao <= numeroGeracoes; geracao++) {
+        const resultado = avaliarGeracao(populacao, geracao);
+
+        if (
+            melhorGlobal === null ||
+            resultado.melhorAptidao > melhorGlobal.aptidao
+        ) {
+            melhorGlobal = {
+                ...resultado.melhorIndividuo
+            };
+        }
+
+        historico.push({
+            geracao: resultado.geracao,
+            melhorAptidao: resultado.melhorAptidao,
+            aptidaoMedia: resultado.aptidaoMedia,
+            melhorAcumulado: melhorGlobal.aptidao
+        });
+
+        if (geracao < numeroGeracoes) {
+            populacao = gerarProximaGeracao(populacao);
+        }
+    }
+
+    return {
+        melhorSolucao: melhorGlobal,
+        populacaoFinal: populacao,
+        historico: historico
+    };
+}
