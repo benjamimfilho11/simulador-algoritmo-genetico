@@ -54,10 +54,49 @@ tbody tr:hover {
     background-color: #f3f6fb;
 }
 
-#orcamento {
-    font-size: 24px;
+label {
+    display: block;
+    margin-bottom: 6px;
     font-weight: bold;
-    color: #17365d;
+}
+
+.campo-reais {
+    display: flex;
+    align-items: center;
+    border: 1px solid #c5cfdc;
+    border-radius: 8px;
+    background-color: #f9fafb;
+    max-width: 220px;
+}
+
+.campo-reais:focus-within {
+    border-color: #2563eb;
+}
+
+.campo-reais.invalido {
+    border-color: #dc2626;
+}
+
+.campo-reais .prefixo {
+    padding: 0 4px 0 12px;
+    color: #5b6b82;
+}
+
+.campo-reais input {
+    border: none;
+    outline: none;
+    background: transparent;
+    padding: 10px 12px 10px 4px;
+    min-width: 0;
+    font: inherit;
+    flex: 1;
+}
+
+.mensagem-erro {
+    color: #dc2626;
+    font-size: 14px;
+    margin: 4px 0 0;
+    min-height: 18px;
 }
 
 button {

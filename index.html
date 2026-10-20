@@ -40,7 +40,12 @@
 
         <section>
             <h2>Orçamento disponível</h2>
-            <p id="orcamento"></p>
+            <label for="orcamento">Valor:</label>
+            <div class="campo-reais">
+                <span class="prefixo">R$</span>
+                <input id="orcamento" type="text" inputmode="decimal" autocomplete="off">
+            </div>
+            <p class="mensagem-erro" id="erroOrcamento"></p>
         </section>
 
         <section>
