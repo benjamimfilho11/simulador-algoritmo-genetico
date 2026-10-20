@@ -28,87 +28,6 @@ const projetos = [
 
 let orcamento = 700000;
 
-function lerValor(texto) { //input em reais (string)
-    const partes = texto.trim().match(/^(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{1,2}))?$/);
-    
-    if (!partes) {
-        return null;
-    }
-    
-    const inteiro = partes[1].replace(/\./g, "");
-    const centavos = (partes[2] || "").padEnd(2, "0");
-    
-    const valor = Number(inteiro) * 100 + Number(centavos);
-    
-    if (!Number.isSafeInteger(valor)) {
-        return null;
-    } //Só para recusar números muuito grandesm que não cabem no int do JS
-    
-    return valor; //retorna o valor em centavos (int)
-}
-
-function transformarEmReais(valor) { //centavos(int) -> reais
-    return (valor / 100).toLocaleString("pt-BR", {style: "currency", currency: "BRL"});
-}
-
-function formatarCampoValor(campo) {
-    const valor = lerValor(campo.value);
-    if (valor != null) {
-        campo.value = (valor / 100).toLocaleString("pt-BR", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        });//Adiciona os centavos e os pontos de milhar no campo
-    }
-}
-
-function validarOrcamento() {
-    const campoOrcamento = document.getElementById("orcamento");
-    const erro = document.getElementById("erroOrcamento");
-    const valor = lerValor(campoOrcamento.value);
-    const valido = valor !== null;
-
-    campoOrcamento.parentElement.classList.toggle("invalido", !valido);
-    erro.textContent = valido ? "" : "Informe um valor em reais, com até duas casas decimais.";
-
-    return valor;
-}
-
-function preencherCampoOrcamento() {
-    const campoOrcamento = document.getElementById("orcamento");
-    campoOrcamento.value = String(orcamento / 100).replace(".", ",");
-    formatarCampoValor(campoOrcamento);
-}
-
-const campoOrcamento = document.getElementById("orcamento");
-campoOrcamento.addEventListener("input", validarOrcamento);
-campoOrcamento.addEventListener("blur", function() { formatarCampoValor(campoOrcamento); });
-
-// Mostra os projetos na tela
-function exibirProjetos() {
-    const tabela = document.getElementById("tabelaProjetos");
-
-    tabela.innerHTML = "";
-
-    projetos.forEach(function(projeto) {
-        const linha = document.createElement("tr");
-
-        const colunaNome = document.createElement("td");
-        colunaNome.textContent = projeto.nome;
-
-        const colunaCusto = document.createElement("td");
-        colunaCusto.textContent = transformarEmReais(projeto.custo);
-
-        const colunaBeneficio = document.createElement("td");
-        colunaBeneficio.textContent = projeto.beneficio;
-
-        linha.appendChild(colunaNome);
-        linha.appendChild(colunaCusto);
-        linha.appendChild(colunaBeneficio);
-
-        tabela.appendChild(linha);
-    });
-}
-
 // Configurações iniciais da população
 let tamanhoPopulacao = 5;
 let tamanhoTorneio = 2;
@@ -215,34 +134,6 @@ function gerarPopulacaoInicial() {
     return populacao;
 }
 
-// Mostra os indivíduos e suas aptidões na tabela
-function exibirPopulacao(populacao) {
-    const tabela = document.getElementById("tabelaPopulacao");
-
-    tabela.innerHTML = "";
-
-    populacao.forEach(function(cromossomo, indice) {
-        const resultado = calcularAptidao(cromossomo);
-        const linha = document.createElement("tr");
-
-        const valores = [
-            indice + 1,
-            resultado.cromossomo,
-            transformarEmReais(resultado.custoTotal),
-            resultado.beneficioTotal,
-            resultado.aptidao
-        ];
-
-        valores.forEach(function(valor) {
-            const coluna = document.createElement("td");
-            coluna.textContent = valor;
-            linha.appendChild(coluna);
-        });
-
-        tabela.appendChild(linha);
-    });
-}
-
 // Sorteia um índice válido da população
 function sortearIndice(limite) {
     return Math.floor(numeroAleatorio() * limite);
@@ -289,13 +180,6 @@ function selecionarPorTorneio(populacao, tamanhoTorneio) {
 
     return [...populacao[indiceVencedor]];
 }
-
-exibirProjetos();
-preencherCampoOrcamento();
-
-const populacaoInicial = gerarPopulacaoInicial();
-
-exibirPopulacao(populacaoInicial);
 
 let taxaCruzamento = 80;
 let taxaMutacao = 5;
