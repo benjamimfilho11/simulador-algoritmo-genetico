@@ -1,3 +1,6 @@
+import { transformarEmReais, formatarCampoValor, validarOrcamento } from "./validacao.js";
+import { gerarPopulacaoInicial, calcularAptidao, projetos, orcamento } from "./script.js";
+
 const campoOrcamento = document.getElementById("orcamento");
 campoOrcamento.addEventListener("input", validarOrcamento);
 campoOrcamento.addEventListener("blur", function() { formatarCampoValor(campoOrcamento); });
