@@ -1,3 +1,4 @@
+export { gerarPopulacaoInicial, calcularAptidao, projetos, orcamento };
 
 "use strict";
 

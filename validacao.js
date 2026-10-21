@@ -1,3 +1,5 @@
+export { transformarEmReais, formatarCampoValor, validarOrcamento };
+
 function lerValor(texto) { //input em reais (string)
     const partes = texto.trim().match(/^(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{1,2}))?$/);
     
