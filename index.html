@@ -17,25 +17,29 @@
     <main>
         <section>
             <h2>Projetos disponíveis</h2>
-
-            <p>
-                Projetos que poderão ser selecionados
-                pelo algoritmo genético.
-            </p>
+            <p>Edite os projetos ou adicione novos. São permitidos de 4 a 15 projetos.</p>
+            <p id="quantidadeProjetos"></p>
 
             <div class="tabela-container">
-                <table>
+                <table class="tabela-projetos">
                     <thead>
                         <tr>
                             <th>Projeto</th>
-                            <th>Custo</th>
+                            <th>Custo (R$)</th>
                             <th>Benefício</th>
+                            <th>Ações</th>
                         </tr>
                     </thead>
-
                     <tbody id="tabelaProjetos"></tbody>
                 </table>
             </div>
+
+            <div class="controles-projetos">
+                <button type="button" id="adicionarProjeto">Adicionar projeto</button>
+                <button type="button" id="salvarProjetos">Salvar projetos</button>
+                <button type="button" id="desfazerProjetos" class="botao-secundario">Desfazer alterações</button>
+            </div>
+            <p id="mensagemProjetos" class="mensagem-projetos" aria-live="polite"></p>
         </section>
 
         <section>

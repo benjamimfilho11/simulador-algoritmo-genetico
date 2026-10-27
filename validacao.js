@@ -40,4 +40,13 @@ function validarOrcamento() {
     return valor;
 }
 
-export { lerValor, transformarEmReais, formatarCampoValor, validarOrcamento };
+function lerBeneficio(texto) {
+    if (typeof texto !== "string" || !/^\d+(?:[,.]\d+)?$/.test(texto.trim())) {
+        return null;
+    }
+
+    const valor = Number(texto.trim().replace(",", "."));
+    return Number.isFinite(valor) && valor >= 0 ? valor : null;
+}
+
+export { lerValor, lerBeneficio, transformarEmReais, formatarCampoValor, validarOrcamento };

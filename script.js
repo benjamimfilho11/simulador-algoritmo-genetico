@@ -380,10 +380,66 @@ function executarAlgoritmo() {
     };
 }
 
+
+function obterProjetos() {
+    return projetos.map(projeto => ({ ...projeto }));
+}
+
+// Valida e salva os projetos
+function atualizarProjetos(novosProjetos) {
+    if (!Array.isArray(novosProjetos) || novosProjetos.length < 4 || novosProjetos.length > 15) {
+        throw new RangeError("Cadastre entre 4 e 15 projetos.");
+    }
+
+    const validados = novosProjetos.map(function(projeto, indice) {
+        if (projeto === null || typeof projeto !== "object" || Array.isArray(projeto)) {
+            throw new TypeError(`Projeto ${indice + 1} inválido.`);
+        }
+
+        const nome = typeof projeto.nome === "string" ? projeto.nome.trim() : "";
+        if (nome.length === 0 || nome.length > 120) {
+            throw new RangeError(`Informe um nome válido para o projeto ${indice + 1}.`);
+        }
+        if (!Number.isSafeInteger(projeto.custo) || projeto.custo <= 0) {
+            throw new RangeError(`Informe um custo válido para o projeto ${indice + 1}.`);
+        }
+        if (typeof projeto.beneficio !== "number" || !Number.isFinite(projeto.beneficio) || projeto.beneficio < 0) {
+            throw new RangeError(`Informe um benefício válido para o projeto ${indice + 1}.`);
+        }
+
+        return { nome, custo: projeto.custo, beneficio: projeto.beneficio };
+    });
+
+    let somaCustos = 0;
+    let somaBeneficios = 0;
+    for (const projeto of validados) {
+        somaCustos += projeto.custo;
+        somaBeneficios += projeto.beneficio;
+        if (!Number.isSafeInteger(somaCustos) || !Number.isFinite(somaBeneficios)) {
+            throw new RangeError("Os valores dos projetos ultrapassam o limite permitido.");
+        }
+    }
+
+    const mudou = validados.length !== projetos.length || validados.some(function(projeto, indice) {
+        const anterior = projetos[indice];
+        return projeto.nome !== anterior.nome ||
+            projeto.custo !== anterior.custo ||
+            projeto.beneficio !== anterior.beneficio;
+    });
+
+    if (mudou) {
+        projetos.splice(0, projetos.length, ...validados);
+        reiniciarSimulacao();
+    }
+    return obterProjetos();
+}
+
 reiniciarSimulacao();
 
 export {
     projetos,
+    obterProjetos,
+    atualizarProjetos,
     orcamento,
     obterConfiguracao,
     obterEstadoSimulacao,
