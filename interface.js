@@ -1,52 +1,43 @@
 import { transformarEmReais, formatarCampoValor, validarOrcamento } from "./validacao.js";
-import { gerarPopulacaoInicial, calcularAptidao, projetos, orcamento } from "./script.js";
+import {
+    projetos,
+    calcularAptidao,
+    obterConfiguracao,
+    obterEstadoSimulacao,
+    atualizarConfiguracao
+} from "./script.js";
 
 const campoOrcamento = document.getElementById("orcamento");
-campoOrcamento.addEventListener("input", validarOrcamento);
-campoOrcamento.addEventListener("blur", function() { formatarCampoValor(campoOrcamento); });
 
 function preencherCampoOrcamento() {
-    const campoOrcamento = document.getElementById("orcamento");
-    campoOrcamento.value = String(orcamento / 100).replace(".", ",");
+    campoOrcamento.value = String(obterConfiguracao().orcamento / 100).replace(".", ",");
     formatarCampoValor(campoOrcamento);
 }
 
-// Mostra os projetos na tela
 function exibirProjetos() {
     const tabela = document.getElementById("tabelaProjetos");
-
     tabela.innerHTML = "";
 
     projetos.forEach(function(projeto) {
         const linha = document.createElement("tr");
+        const valores = [projeto.nome, transformarEmReais(projeto.custo), projeto.beneficio];
 
-        const colunaNome = document.createElement("td");
-        colunaNome.textContent = projeto.nome;
-
-        const colunaCusto = document.createElement("td");
-        colunaCusto.textContent = transformarEmReais(projeto.custo);
-
-        const colunaBeneficio = document.createElement("td");
-        colunaBeneficio.textContent = projeto.beneficio;
-
-        linha.appendChild(colunaNome);
-        linha.appendChild(colunaCusto);
-        linha.appendChild(colunaBeneficio);
-
+        valores.forEach(function(valor) {
+            const coluna = document.createElement("td");
+            coluna.textContent = valor;
+            linha.appendChild(coluna);
+        });
         tabela.appendChild(linha);
     });
 }
 
-// Mostra os indivíduos e suas aptidões na tabela
 function exibirPopulacao(populacao) {
     const tabela = document.getElementById("tabelaPopulacao");
-
     tabela.innerHTML = "";
 
     populacao.forEach(function(cromossomo, indice) {
         const resultado = calcularAptidao(cromossomo);
         const linha = document.createElement("tr");
-
         const valores = [
             indice + 1,
             resultado.cromossomo,
@@ -60,14 +51,27 @@ function exibirPopulacao(populacao) {
             coluna.textContent = valor;
             linha.appendChild(coluna);
         });
-
         tabela.appendChild(linha);
     });
 }
 
+// Só aplica um orçamento válido e reinicia a população
+function aplicarOrcamento() {
+    const valor = validarOrcamento();
+    if (valor === null) {
+        return;
+    }
+
+    atualizarConfiguracao({ orcamento: valor });
+    exibirPopulacao(obterEstadoSimulacao().populacao);
+}
+
+campoOrcamento.addEventListener("input", validarOrcamento);
+campoOrcamento.addEventListener("change", aplicarOrcamento);
+campoOrcamento.addEventListener("blur", function() {
+    formatarCampoValor(campoOrcamento);
+});
+
 exibirProjetos();
 preencherCampoOrcamento();
-
-const populacaoInicial = gerarPopulacaoInicial();
-
-exibirPopulacao(populacaoInicial);
+exibirPopulacao(obterEstadoSimulacao().populacao);

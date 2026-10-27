@@ -1,50 +1,110 @@
-export { gerarPopulacaoInicial, calcularAptidao, projetos, orcamento };
-
 "use strict";
 
-// Projetos iniciais e orçamento disponível
+// Os custos e o orçamento são armazenados em centavos
 const projetos = [
-//Valores estão em centavos! Porque no js, pode haver imprecisão com números decimais (0.1 + 0.2 != 0.3)
-    {
-        nome: "Melhoria da iluminação",
-        custo: 400000,
-        beneficio: 7
-    },
-    {
-        nome: "Instalação de bicicletários",
-        custo: 300000,
-        beneficio: 5
-    },
-    {
-        nome: "Aquisição de bancos",
-        custo: 200000,
-        beneficio: 3
-    },
-    {
-        nome: "Reforma de espaço de convivência",
-        custo: 500000,
-        beneficio: 8
-    }
+    { nome: "Melhoria da iluminação", custo: 400000, beneficio: 7 },
+    { nome: "Instalação de bicicletários", custo: 300000, beneficio: 5 },
+    { nome: "Aquisição de bancos", custo: 200000, beneficio: 3 },
+    { nome: "Reforma de espaço de convivência", custo: 500000, beneficio: 8 }
 ];
 
 let orcamento = 700000;
 
-// Configurações iniciais da população
-let tamanhoPopulacao = 5;
-let tamanhoTorneio = 2;
-let semente = 42;
-let estadoAleatorio = semente;
+const configuracao = {
+    tamanhoPopulacao: 5,
+    tamanhoTorneio: 2,
+    semente: 42,
+    taxaCruzamento: 80,
+    taxaMutacao: 5,
+    quantidadeElite: 1,
+    numeroGeracoes: 50
+};
 
-// Gera números pseudoaleatórios usando a semente
-function numeroAleatorio() {
-    estadoAleatorio = (
-        Math.imul(1664525, estadoAleatorio) + 1013904223
-    ) >>> 0;
+let estadoSimulacao;
 
-    return estadoAleatorio / 4294967296;
+function obterConfiguracao() {
+    return { orcamento, ...configuracao };
 }
 
-// Cria um cromossomo com genes 0 ou 1
+function obterEstadoSimulacao() {
+    return {
+        geracao: estadoSimulacao.geracao,
+        populacao: estadoSimulacao.populacao.map(cromossomo => [...cromossomo]),
+        historico: estadoSimulacao.historico.map(registro => ({ ...registro })),
+        melhorGlobal: estadoSimulacao.melhorGlobal === null
+            ? null
+            : {
+                ...estadoSimulacao.melhorGlobal,
+                projetosSelecionados: [...estadoSimulacao.melhorGlobal.projetosSelecionados]
+            },
+        estadoAleatorio: estadoSimulacao.estadoAleatorio,
+        finalizada: estadoSimulacao.geracao >= configuracao.numeroGeracoes
+    };
+}
+
+// Atualiza os parâmetros e reinicia após mudanças válidas
+function atualizarConfiguracao(alteracoes) {
+    if (alteracoes === null || typeof alteracoes !== "object" || Array.isArray(alteracoes)) {
+        throw new TypeError("As configurações devem ser um objeto.");
+    }
+
+    const atual = obterConfiguracao();
+    const permitidas = Object.keys(atual);
+
+    for (const chave of Object.keys(alteracoes)) {
+        if (!permitidas.includes(chave)) {
+            throw new Error(`Configuração desconhecida: ${chave}`);
+        }
+    }
+
+    const nova = { ...atual, ...alteracoes };
+    const inteiroMinimo = (valor, minimo) =>
+        Number.isSafeInteger(valor) && valor >= minimo;
+    const percentualValido = valor =>
+        typeof valor === "number" && Number.isFinite(valor) && valor >= 0 && valor <= 100;
+
+    if (!inteiroMinimo(nova.orcamento, 0)) {
+        throw new RangeError("O orçamento deve ser um valor em centavos não negativo.");
+    }
+    if (!inteiroMinimo(nova.tamanhoPopulacao, 2)) {
+        throw new RangeError("A população deve ter pelo menos 2 indivíduos.");
+    }
+    if (!inteiroMinimo(nova.numeroGeracoes, 1)) {
+        throw new RangeError("O número de gerações deve ser pelo menos 1.");
+    }
+    if (!inteiroMinimo(nova.tamanhoTorneio, 2) || nova.tamanhoTorneio > nova.tamanhoPopulacao) {
+        throw new RangeError("O torneio deve ter entre 2 e o tamanho da população.");
+    }
+    if (!inteiroMinimo(nova.quantidadeElite, 0) || nova.quantidadeElite >= nova.tamanhoPopulacao) {
+        throw new RangeError("A elite deve ter entre 0 e população menos 1.");
+    }
+    if (!percentualValido(nova.taxaCruzamento) || !percentualValido(nova.taxaMutacao)) {
+        throw new RangeError("As taxas devem estar entre 0 e 100.");
+    }
+    if (!Number.isSafeInteger(nova.semente)) {
+        throw new RangeError("A semente deve ser um número inteiro.");
+    }
+
+    if (permitidas.some(chave => nova[chave] !== atual[chave])) {
+        orcamento = nova.orcamento;
+        for (const chave of Object.keys(configuracao)) {
+            configuracao[chave] = nova[chave];
+        }
+        reiniciarSimulacao();
+    }
+
+    return obterConfiguracao();
+}
+
+// Sorteios reproduzíveis a partir da semente
+function numeroAleatorio() {
+    estadoSimulacao.estadoAleatorio = (
+        Math.imul(1664525, estadoSimulacao.estadoAleatorio) + 1013904223
+    ) >>> 0;
+
+    return estadoSimulacao.estadoAleatorio / 4294967296;
+}
+
 function gerarCromossomo() {
     const cromossomo = [];
 
@@ -56,7 +116,6 @@ function gerarCromossomo() {
     return cromossomo;
 }
 
-// Calcula os dados de um cromossomo
 function avaliarCromossomo(cromossomo) {
     let custoTotal = 0;
     let beneficioTotal = 0;
@@ -73,14 +132,14 @@ function avaliarCromossomo(cromossomo) {
     return {
         cromossomo: cromossomo.join(""),
         projetosSelecionados: selecionados,
-        custoTotal: custoTotal,
-        beneficioTotal: beneficioTotal,
+        custoTotal,
+        beneficioTotal,
         saldo: orcamento - custoTotal,
         viavel: custoTotal <= orcamento
     };
 }
 
-// Remove projetos até respeitar o orçamento
+// Remove os projetos com menor benefício por custo
 function repararCromossomo(cromossomo) {
     const reparado = [...cromossomo];
 
@@ -90,9 +149,7 @@ function repararCromossomo(cromossomo) {
 
         reparado.forEach(function(gene, indice) {
             if (gene === 1) {
-                const razao =
-                    projetos[indice].beneficio / projetos[indice].custo;
-
+                const razao = projetos[indice].beneficio / projetos[indice].custo;
                 if (razao < menorRazao) {
                     menorRazao = razao;
                     indiceRemover = indice;
@@ -103,76 +160,61 @@ function repararCromossomo(cromossomo) {
         if (indiceRemover === -1) {
             break;
         }
-
         reparado[indiceRemover] = 0;
     }
 
     return reparado;
 }
 
-// Calcula a aptidão após a reparação
 function calcularAptidao(cromossomo) {
     const reparado = repararCromossomo(cromossomo);
     const resultado = avaliarCromossomo(reparado);
-
-    return {
-        ...resultado,
-        aptidao: resultado.beneficioTotal
-    };
+    return { ...resultado, aptidao: resultado.beneficioTotal };
 }
 
-// Gera a população inicial já reparada
 function gerarPopulacaoInicial() {
     const populacao = [];
 
-    for (let i = 0; i < tamanhoPopulacao; i++) {
+    for (let i = 0; i < configuracao.tamanhoPopulacao; i++) {
         const cromossomo = gerarCromossomo();
-        const reparado = repararCromossomo(cromossomo);
-
-        populacao.push(reparado);
+        populacao.push(repararCromossomo(cromossomo));
     }
 
     return populacao;
 }
 
-// Sorteia um índice válido da população
 function sortearIndice(limite) {
+    if (!Number.isSafeInteger(limite) || limite < 1) {
+        throw new RangeError("O limite do sorteio deve ser positivo.");
+    }
     return Math.floor(numeroAleatorio() * limite);
 }
 
-// Seleciona um indivíduo por torneio
-function selecionarPorTorneio(populacao, tamanhoTorneio) {
+// Escolhe o vencedor com desempate pelo menor índice
+function selecionarPorTorneio(populacao, tamanhoTorneio = configuracao.tamanhoTorneio) {
+    if (!Number.isSafeInteger(tamanhoTorneio) || tamanhoTorneio < 2 || tamanhoTorneio > populacao.length) {
+        throw new RangeError("Tamanho de torneio inválido.");
+    }
+
     const candidatos = [];
 
-    // Sorteia os candidatos sem repetir índices
     while (candidatos.length < tamanhoTorneio) {
         const indice = sortearIndice(populacao.length);
-
         if (!candidatos.includes(indice)) {
             candidatos.push(indice);
         }
     }
 
-    // Considera o primeiro candidato como vencedor inicial
     let indiceVencedor = candidatos[0];
-    let melhorAptidao = calcularAptidao(
-        populacao[indiceVencedor]
-    ).aptidao;
+    let melhorAptidao = calcularAptidao(populacao[indiceVencedor]).aptidao;
 
-    // Compara as aptidões para encontrar o vencedor
     for (let i = 1; i < candidatos.length; i++) {
         const indiceAtual = candidatos[i];
-
-        const aptidaoAtual = calcularAptidao(
-            populacao[indiceAtual]
-        ).aptidao;
+        const aptidaoAtual = calcularAptidao(populacao[indiceAtual]).aptidao;
 
         if (
             aptidaoAtual > melhorAptidao ||
-            (
-                aptidaoAtual === melhorAptidao &&
-                indiceAtual < indiceVencedor
-            )
+            (aptidaoAtual === melhorAptidao && indiceAtual < indiceVencedor)
         ) {
             indiceVencedor = indiceAtual;
             melhorAptidao = aptidaoAtual;
@@ -182,12 +224,9 @@ function selecionarPorTorneio(populacao, tamanhoTorneio) {
     return [...populacao[indiceVencedor]];
 }
 
-let taxaCruzamento = 80;
-let taxaMutacao = 5;
-
-// Realiza o cruzamento de um ponto entre dois pais
-function cruzarCromossomos(pai1, pai2, taxa = taxaCruzamento, corteForcado = null) {
-    let filho1 = [...pai1]; // Copia os genes sem alterar o pai original
+// Cruzamento de um ponto
+function cruzarCromossomos(pai1, pai2, taxa = configuracao.taxaCruzamento, corteForcado = null) {
+    let filho1 = [...pai1];
     let filho2 = [...pai2];
 
     if (numeroAleatorio() < taxa / 100) {
@@ -209,8 +248,8 @@ function cruzarCromossomos(pai1, pai2, taxa = taxaCruzamento, corteForcado = nul
     return [filho1, filho2];
 }
 
-// Aplica mutação individualmente em cada gene
-function mutarCromossomo(cromossomo, taxa = taxaMutacao, indicesForcados = null) {
+// Mutação aplicada a cada gene
+function mutarCromossomo(cromossomo, taxa = configuracao.taxaMutacao, indicesForcados = null) {
     const mutado = [...cromossomo];
 
     for (let i = 0; i < mutado.length; i++) {
@@ -226,16 +265,11 @@ function mutarCromossomo(cromossomo, taxa = taxaMutacao, indicesForcados = null)
     return mutado;
 }
 
-
-let quantidadeElite = 1;
-let numeroGeracoes = 50;
-
-// Identifica os melhores indivíduos da população
-function selecionarElite(populacao, quantidade) {
+function selecionarElite(populacao, quantidade = configuracao.quantidadeElite) {
     const avaliados = populacao.map(function(cromossomo, indice) {
         return {
-            indice: indice,
-            cromossomo: cromossomo,
+            indice,
+            cromossomo,
             aptidao: calcularAptidao(cromossomo).aptidao
         };
     });
@@ -244,48 +278,25 @@ function selecionarElite(populacao, quantidade) {
         return b.aptidao - a.aptidao || a.indice - b.indice;
     });
 
-    return avaliados
-        .slice(0, quantidade)
-        .map(function(individuo) {
-            return [...individuo.cromossomo];
-        });
+    return avaliados.slice(0, quantidade).map(function(individuo) {
+        return [...individuo.cromossomo];
+    });
 }
 
-
-// Forma uma nova geração a partir da população anterior
+// Usa apenas a população anterior para selecionar os pais
 function gerarProximaGeracao(populacaoAnterior) {
-    const novaPopulacao = selecionarElite(
-        populacaoAnterior,
-        quantidadeElite
-    );
+    const novaPopulacao = selecionarElite(populacaoAnterior);
 
     while (novaPopulacao.length < populacaoAnterior.length) {
-        const primeiroPai = selecionarPorTorneio(
-            populacaoAnterior,
-            tamanhoTorneio
-        );
+        const primeiroPai = selecionarPorTorneio(populacaoAnterior);
+        const segundoPai = selecionarPorTorneio(populacaoAnterior);
+        const filhos = cruzarCromossomos(primeiroPai, segundoPai);
 
-        const segundoPai = selecionarPorTorneio(
-            populacaoAnterior,
-            tamanhoTorneio
-        );
-
-        const filhos = cruzarCromossomos(
-            primeiroPai,
-            segundoPai
-        );
-
-        const primeiroFilho = repararCromossomo(
-            mutarCromossomo(filhos[0])
-        );
-
-        const segundoFilho = repararCromossomo(
-            mutarCromossomo(filhos[1])
-        );
-
+        const primeiroFilho = repararCromossomo(mutarCromossomo(filhos[0]));
         novaPopulacao.push(primeiroFilho);
 
         if (novaPopulacao.length < populacaoAnterior.length) {
+            const segundoFilho = repararCromossomo(mutarCromossomo(filhos[1]));
             novaPopulacao.push(segundoFilho);
         }
     }
@@ -293,21 +304,11 @@ function gerarProximaGeracao(populacaoAnterior) {
     return novaPopulacao;
 }
 
-
-// Calcula as informações de uma geração
 function avaliarGeracao(populacao, numero) {
-    const resultados = populacao.map(function(cromossomo) {
-        return calcularAptidao(cromossomo);
-    });
-
-    const somaAptidoes = resultados.reduce(function(soma, resultado) {
-        return soma + resultado.aptidao;
-    }, 0);
-
+    const resultados = populacao.map(cromossomo => calcularAptidao(cromossomo));
+    const somaAptidoes = resultados.reduce((soma, resultado) => soma + resultado.aptidao, 0);
     const melhor = resultados.reduce(function(atual, resultado) {
-        return resultado.aptidao > atual.aptidao
-            ? resultado
-            : atual;
+        return resultado.aptidao > atual.aptidao ? resultado : atual;
     });
 
     return {
@@ -318,44 +319,86 @@ function avaliarGeracao(populacao, numero) {
     };
 }
 
+function registrarGeracao() {
+    const resultado = avaliarGeracao(estadoSimulacao.populacao, estadoSimulacao.geracao);
 
-
-// Executa a evolução até o limite de gerações
-function executarAlgoritmo() {
-    estadoAleatorio = semente;
-
-    let populacao = gerarPopulacaoInicial();
-    const historico = [];
-
-    let melhorGlobal = null;
-
-    for (let geracao = 0; geracao <= numeroGeracoes; geracao++) {
-        const resultado = avaliarGeracao(populacao, geracao);
-
-        if (
-            melhorGlobal === null ||
-            resultado.melhorAptidao > melhorGlobal.aptidao
-        ) {
-            melhorGlobal = {
-                ...resultado.melhorIndividuo
-            };
-        }
-
-        historico.push({
-            geracao: resultado.geracao,
-            melhorAptidao: resultado.melhorAptidao,
-            aptidaoMedia: resultado.aptidaoMedia,
-            melhorAcumulado: melhorGlobal.aptidao
-        });
-
-        if (geracao < numeroGeracoes) {
-            populacao = gerarProximaGeracao(populacao);
-        }
+    if (
+        estadoSimulacao.melhorGlobal === null ||
+        resultado.melhorAptidao > estadoSimulacao.melhorGlobal.aptidao
+    ) {
+        estadoSimulacao.melhorGlobal = {
+            ...resultado.melhorIndividuo,
+            projetosSelecionados: [...resultado.melhorIndividuo.projetosSelecionados],
+            geracao: resultado.geracao
+        };
     }
 
+    estadoSimulacao.historico.push({
+        geracao: resultado.geracao,
+        melhorAptidao: resultado.melhorAptidao,
+        aptidaoMedia: resultado.aptidaoMedia,
+        melhorAcumulado: estadoSimulacao.melhorGlobal.aptidao
+    });
+}
+
+// Restaura a semente e recria a geração zero
+function reiniciarSimulacao() {
+    estadoSimulacao = {
+        geracao: 0,
+        populacao: [],
+        historico: [],
+        melhorGlobal: null,
+        estadoAleatorio: configuracao.semente >>> 0
+    };
+
+    estadoSimulacao.populacao = gerarPopulacaoInicial();
+    registrarGeracao();
+    return obterEstadoSimulacao();
+}
+
+// Avança uma geração sem perder o estado
+function avancarGeracao() {
+    if (estadoSimulacao.geracao < configuracao.numeroGeracoes) {
+        estadoSimulacao.populacao = gerarProximaGeracao(estadoSimulacao.populacao);
+        estadoSimulacao.geracao++;
+        registrarGeracao();
+    }
+    return obterEstadoSimulacao();
+}
+
+// Mantém a execução completa disponível para os testes
+function executarAlgoritmo() {
+    reiniciarSimulacao();
+    while (estadoSimulacao.geracao < configuracao.numeroGeracoes) {
+        avancarGeracao();
+    }
+    const estado = obterEstadoSimulacao();
     return {
-        melhorSolucao: melhorGlobal,
-        populacaoFinal: populacao,
-        historico: historico
+        melhorSolucao: estado.melhorGlobal,
+        populacaoFinal: estado.populacao,
+        historico: estado.historico
     };
 }
+
+reiniciarSimulacao();
+
+export {
+    projetos,
+    orcamento,
+    obterConfiguracao,
+    obterEstadoSimulacao,
+    atualizarConfiguracao,
+    reiniciarSimulacao,
+    avancarGeracao,
+    executarAlgoritmo,
+    gerarPopulacaoInicial,
+    avaliarCromossomo,
+    calcularAptidao,
+    repararCromossomo,
+    selecionarPorTorneio,
+    cruzarCromossomos,
+    mutarCromossomo,
+    selecionarElite,
+    gerarProximaGeracao,
+    avaliarGeracao
+};
