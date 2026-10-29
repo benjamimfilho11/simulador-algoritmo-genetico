@@ -1,3 +1,4 @@
+
 import {
     lerValor,
     lerBeneficio,
@@ -12,17 +13,43 @@ import {
     calcularAptidao,
     obterConfiguracao,
     obterEstadoSimulacao,
-    atualizarConfiguracao
+    atualizarConfiguracao,
+    reiniciarSimulacao,
+    avancarGeracao
 } from "./script.js";
 
 const campoOrcamento = document.getElementById("orcamento");
 const tabelaProjetos = document.getElementById("tabelaProjetos");
 const mensagemProjetos = document.getElementById("mensagemProjetos");
+const mensagemConfiguracao = document.getElementById("mensagemConfiguracao");
 const quantidadeProjetos = document.getElementById("quantidadeProjetos");
+
 const botaoAdicionar = document.getElementById("adicionarProjeto");
 const botaoSalvar = document.getElementById("salvarProjetos");
 const botaoDesfazer = document.getElementById("desfazerProjetos");
 
+const botaoExecutar = document.getElementById("executarSimulacao");
+const botaoPausar = document.getElementById("pausarSimulacao");
+const botaoAvancar = document.getElementById("avancarSimulacao");
+const botaoReiniciar = document.getElementById("reiniciarSimulacao");
+
+const estadoExecucao = document.getElementById("estadoExecucao");
+
+const camposConfiguracao = [
+    "tamanhoPopulacao",
+    "numeroGeracoes",
+    "taxaCruzamento",
+    "taxaMutacao",
+    "tamanhoTorneio",
+    "quantidadeElite",
+    "semente"
+];
+
+let temporizador = null;
+let alteracoesProjetos = false;
+let configuracaoPendente = false;
+
+// Converte os projetos para os campos de edição
 function criarRascunho(projeto) {
     return {
         nome: projeto.nome,
@@ -41,14 +68,27 @@ function mostrarMensagem(texto, erro = false) {
     mensagemProjetos.classList.toggle("erro", erro);
 }
 
-function preencherCampoOrcamento() {
-    campoOrcamento.value = String(obterConfiguracao().orcamento / 100).replace(".", ",");
-    formatarCampoValor(campoOrcamento);
+function mostrarMensagemConfiguracao(texto, erro = false) {
+    mensagemConfiguracao.textContent = texto;
+    mensagemConfiguracao.classList.toggle("erro", erro);
 }
 
+function preencherConfiguracoes() {
+    const configuracao = obterConfiguracao();
+
+    campoOrcamento.value = String(configuracao.orcamento / 100).replace(".", ",");
+    formatarCampoValor(campoOrcamento);
+
+    camposConfiguracao.forEach(function(nome) {
+        document.getElementById(nome).value = configuracao[nome];
+    });
+}
+
+// Cria os campos editáveis de cada projeto
 function criarCampo(linha, valor, rotulo, indice, propriedade, moeda = false) {
     const coluna = linha.insertCell();
     const campo = document.createElement("input");
+
     campo.type = "text";
     campo.className = "campo-projeto";
     campo.value = valor;
@@ -62,8 +102,11 @@ function criarCampo(linha, valor, rotulo, indice, propriedade, moeda = false) {
     }
 
     campo.addEventListener("input", function() {
+        pausarExecucao();
+        alteracoesProjetos = true;
         projetosEmEdicao[indice][propriedade] = campo.value;
         mostrarMensagem("Existem alterações ainda não salvas.");
+        atualizarBotoes();
     });
 
     if (moeda) {
@@ -76,7 +119,6 @@ function criarCampo(linha, valor, rotulo, indice, propriedade, moeda = false) {
     coluna.appendChild(campo);
 }
 
-// Mostra os projetos que estão sendo editados
 function exibirProjetos() {
     tabelaProjetos.innerHTML = "";
 
@@ -89,18 +131,23 @@ function exibirProjetos() {
 
         const colunaAcoes = linha.insertCell();
         const remover = document.createElement("button");
+
         remover.type = "button";
         remover.textContent = "Remover";
         remover.className = "botao-perigo";
         remover.disabled = projetosEmEdicao.length <= 4;
-        remover.setAttribute("aria-label", `Remover projeto ${indice + 1}`);
 
         remover.addEventListener("click", function() {
             if (projetosEmEdicao.length <= 4) {
                 return;
             }
+
+            pausarExecucao();
             projetosEmEdicao.splice(indice, 1);
+            alteracoesProjetos = true;
+
             exibirProjetos();
+            atualizarBotoes();
             mostrarMensagem("Projeto removido da edição. Salve para confirmar.");
         });
 
@@ -111,13 +158,15 @@ function exibirProjetos() {
     botaoAdicionar.disabled = projetosEmEdicao.length >= 15;
 }
 
+// Atualiza a tabela com a população atual
 function exibirPopulacao(populacao) {
     const tabela = document.getElementById("tabelaPopulacao");
     tabela.innerHTML = "";
 
     populacao.forEach(function(cromossomo, indice) {
         const resultado = calcularAptidao(cromossomo);
-        const linha = document.createElement("tr");
+        const linha = tabela.insertRow();
+
         const valores = [
             indice + 1,
             resultado.cromossomo,
@@ -127,16 +176,45 @@ function exibirPopulacao(populacao) {
         ];
 
         valores.forEach(function(valor) {
-            const coluna = document.createElement("td");
+            const coluna = linha.insertCell();
             coluna.textContent = valor;
-            linha.appendChild(coluna);
         });
-
-        tabela.appendChild(linha);
     });
 }
 
-// Salva os projetos após validar todos os campos
+// Atualiza a interface após cada geração
+function atualizarSimulacao() {
+    const estado = obterEstadoSimulacao();
+
+    exibirPopulacao(estado.populacao);
+
+    if (estado.finalizada) {
+        pararTemporizador();
+        estadoExecucao.textContent =
+            `Geração ${estado.geracao} · Simulação finalizada`;
+    } else if (temporizador !== null) {
+        estadoExecucao.textContent =
+            `Geração ${estado.geracao} · Executando`;
+    } else {
+        estadoExecucao.textContent =
+            `Geração ${estado.geracao} · Pausada`;
+    }
+
+    atualizarBotoes();
+}
+
+function atualizarBotoes() {
+    const estado = obterEstadoSimulacao();
+    const executando = temporizador !== null;
+    const bloqueado = alteracoesProjetos || configuracaoPendente;
+
+    botaoExecutar.disabled = executando || estado.finalizada || bloqueado;
+    botaoPausar.disabled = !executando;
+    botaoAvancar.disabled = executando || estado.finalizada || bloqueado;
+    botaoReiniciar.disabled = false;
+}
+
+// Salva os projetos após validar os dados
 function salvarProjetos() {
     const novosProjetos = projetosEmEdicao.map(function(projeto) {
         return {
@@ -147,13 +225,18 @@ function salvarProjetos() {
     });
 
     try {
+        pausarExecucao();
         atualizarProjetos(novosProjetos);
+
         projetosEmEdicao = obterProjetos().map(criarRascunho);
+        alteracoesProjetos = false;
+
         exibirProjetos();
-        exibirPopulacao(obterEstadoSimulacao().populacao);
-        mostrarMensagem("Projetos salvos com sucesso.");
+        atualizarSimulacao();
+        mostrarMensagem("Projetos salvos. Simulação reiniciada.");
     } catch (erro) {
         mostrarMensagem(erro.message, true);
+        atualizarBotoes();
     }
 }
 
@@ -163,38 +246,198 @@ function adicionarProjeto() {
         return;
     }
 
-    projetosEmEdicao.push({ nome: "", custoTexto: "", beneficioTexto: "0" });
+    pausarExecucao();
+
+    projetosEmEdicao.push({
+        nome: "",
+        custoTexto: "",
+        beneficioTexto: "0"
+    });
+
+    alteracoesProjetos = true;
+
     exibirProjetos();
+    atualizarBotoes();
     mostrarMensagem("Preencha o novo projeto e clique em Salvar projetos.");
 }
 
 function desfazerAlteracoes() {
     projetosEmEdicao = obterProjetos().map(criarRascunho);
+    alteracoesProjetos = false;
+
     exibirProjetos();
+    atualizarBotoes();
     mostrarMensagem("Alterações não salvas foram desfeitas.");
 }
 
-// Aplica o orçamento e atualiza a população
-function aplicarOrcamento() {
-    const valor = validarOrcamento();
-    if (valor === null) {
+// Lê e valida os parâmetros da simulação
+function lerConfiguracoes() {
+    const valores = {};
+
+    camposConfiguracao.forEach(function(nome) {
+        const campo = document.getElementById(nome);
+        const texto = campo.value.trim();
+
+        if (texto === "") {
+            throw new Error(`Preencha o campo ${campo.labels[0].textContent}.`);
+        }
+
+        const valor = Number(texto);
+
+        if (!Number.isFinite(valor)) {
+            throw new Error(`Valor inválido no campo ${campo.labels[0].textContent}.`);
+        }
+
+        valores[nome] = valor;
+    });
+
+    const orcamento = validarOrcamento();
+
+    if (orcamento === null) {
+        throw new Error("Informe um orçamento válido.");
+    }
+
+    valores.orcamento = orcamento;
+
+    return valores;
+}
+
+// Aplica os parâmetros e reinicia quando necessário
+function aplicarConfiguracoes() {
+    pausarExecucao();
+
+    try {
+        const valores = lerConfiguracoes();
+
+        atualizarConfiguracao(valores);
+        configuracaoPendente = false;
+
+        preencherConfiguracoes();
+        atualizarSimulacao();
+        mostrarMensagemConfiguracao("Configurações aplicadas.");
+    } catch (erro) {
+        configuracaoPendente = true;
+        mostrarMensagemConfiguracao(erro.message, true);
+    }
+
+    atualizarBotoes();
+}
+
+function pararTemporizador() {
+    if (temporizador !== null) {
+        clearInterval(temporizador);
+        temporizador = null;
+    }
+}
+
+// Pausa sem alterar a população ou o histórico
+function pausarExecucao() {
+    pararTemporizador();
+
+    const estado = obterEstadoSimulacao();
+
+    if (!estado.finalizada) {
+        estadoExecucao.textContent =
+            `Geração ${estado.geracao} · Pausada`;
+    }
+
+    atualizarBotoes();
+}
+
+// Produz exatamente uma nova geração
+function executarUmaGeracao() {
+    try {
+        avancarGeracao();
+        atualizarSimulacao();
+    } catch (erro) {
+        pararTemporizador();
+        estadoExecucao.textContent = `Erro: ${erro.message}`;
+        atualizarBotoes();
+    }
+}
+
+// Executa continuamente, preservando o estado
+function executarSimulacao() {
+    if (temporizador !== null || alteracoesProjetos || configuracaoPendente) {
         return;
     }
 
-    atualizarConfiguracao({ orcamento: valor });
-    exibirPopulacao(obterEstadoSimulacao().populacao);
+    if (obterEstadoSimulacao().finalizada) {
+        return;
+    }
+
+    temporizador = setInterval(executarUmaGeracao, 500);
+    atualizarSimulacao();
 }
 
+// Avança uma geração e permanece pausado
+function avancarUmaGeracao() {
+    if (temporizador !== null || alteracoesProjetos || configuracaoPendente) {
+        return;
+    }
+
+    executarUmaGeracao();
+}
+
+// Reinicia a população, o histórico e a semente
+function reiniciarExecucao() {
+    pausarExecucao();
+
+    if (alteracoesProjetos || configuracaoPendente) {
+        mostrarMensagemConfiguracao(
+            "Salve ou desfaça as alterações pendentes antes de reiniciar.",
+            true
+        );
+        return;
+    }
+
+    reiniciarSimulacao();
+    atualizarSimulacao();
+
+    estadoExecucao.textContent = "Geração 0 · Simulação pronta";
+}
+
+// Eventos dos projetos
 botaoAdicionar.addEventListener("click", adicionarProjeto);
 botaoSalvar.addEventListener("click", salvarProjetos);
 botaoDesfazer.addEventListener("click", desfazerAlteracoes);
 
-campoOrcamento.addEventListener("input", validarOrcamento);
-campoOrcamento.addEventListener("change", aplicarOrcamento);
+// Eventos dos parâmetros
+camposConfiguracao.forEach(function(nome) {
+    const campo = document.getElementById(nome);
+
+    campo.addEventListener("input", function() {
+        pausarExecucao();
+        configuracaoPendente = true;
+        mostrarMensagemConfiguracao("Existem alterações pendentes.");
+        atualizarBotoes();
+    });
+
+    campo.addEventListener("change", aplicarConfiguracoes);
+});
+
+campoOrcamento.addEventListener("input", function() {
+    pausarExecucao();
+    configuracaoPendente = true;
+    validarOrcamento();
+    atualizarBotoes();
+});
+
+campoOrcamento.addEventListener("change", aplicarConfiguracoes);
+
 campoOrcamento.addEventListener("blur", function() {
     formatarCampoValor(campoOrcamento);
 });
 
+// Eventos dos controles
+botaoExecutar.addEventListener("click", executarSimulacao);
+botaoPausar.addEventListener("click", pausarExecucao);
+botaoAvancar.addEventListener("click", avancarUmaGeracao);
+botaoReiniciar.addEventListener("click", reiniciarExecucao);
+
+// Inicialização da interface
 exibirProjetos();
-preencherCampoOrcamento();
-exibirPopulacao(obterEstadoSimulacao().populacao);
+preencherConfiguracoes();
+atualizarSimulacao();
+
+estadoExecucao.textContent = "Geração 0 · Simulação pronta";
