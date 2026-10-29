@@ -8,26 +8,32 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-    <header>
-        <h1>Simulador de Algoritmo Genético</h1>
-        <p>Seleção de projetos com orçamento limitado</p>
+    <header class="cabecalho">
+        <div class="cabecalho-conteudo">
+            <p class="sobretitulo">Inteligência Artificial · Simulação</p>
+            <h1>Simulador de Algoritmo Genético</h1>
+            <p>Seleção de projetos com orçamento limitado</p>
+        </div>
     </header>
 
     <main>
-        <section>
-            <h2>Projetos disponíveis</h2>
-            <p>Edite os projetos ou adicione novos. São permitidos de 4 a 15 projetos.</p>
-            <p id="quantidadeProjetos"></p>
+        <section class="painel" aria-labelledby="titulo-projetos">
+            <div class="titulo-secao">
+                <div>
+                    <h2 id="titulo-projetos">Projetos disponíveis</h2>
+                    <p>Edite os projetos ou adicione novos. São permitidos de 4 a 15 projetos.</p>
+                </div>
+                <p id="quantidadeProjetos" class="indicador"></p>
+            </div>
 
             <div class="tabela-container">
                 <table class="tabela-projetos">
                     <thead>
                         <tr>
-                            <th>Projeto</th>
-                            <th>Custo (R$)</th>
-                            <th>Benefício</th>
-                            <th>Ações</th>
+                            <th scope="col">Projeto</th>
+                            <th scope="col">Custo (R$)</th>
+                            <th scope="col">Benefício</th>
+                            <th scope="col">Ações</th>
                         </tr>
                     </thead>
                     <tbody id="tabelaProjetos"></tbody>
@@ -39,44 +45,122 @@
                 <button type="button" id="salvarProjetos">Salvar projetos</button>
                 <button type="button" id="desfazerProjetos" class="botao-secundario">Desfazer alterações</button>
             </div>
+
             <p id="mensagemProjetos" class="mensagem-projetos" aria-live="polite"></p>
         </section>
 
-        <section>
-            <h2>Orçamento disponível</h2>
-            <label for="orcamento">Valor:</label>
-            <div class="campo-reais">
-                <span class="prefixo">R$</span>
-                <input id="orcamento" type="text" inputmode="decimal" autocomplete="off">
+        <section class="painel" aria-labelledby="titulo-configuracoes">
+            <h2 id="titulo-configuracoes">Configurações da simulação</h2>
+            <p>Defina os parâmetros antes de iniciar. Alterações exigem reinício da execução.</p>
+
+            <div class="grade-configuracoes">
+                <div class="campo-configuracao">
+                    <label for="orcamento">Orçamento disponível</label>
+                    <div class="campo-reais">
+                        <span class="prefixo">R$</span>
+                        <input id="orcamento" type="text"
+                               inputmode="decimal" autocomplete="off"
+                               aria-describedby="erroOrcamento">
+                    </div>
+                    <p class="mensagem-erro" id="erroOrcamento" aria-live="polite"></p>
+                </div>
+
+                <div class="campo-configuracao">
+                    <label for="tamanhoPopulacao">Tamanho da população</label>
+                    <input id="tamanhoPopulacao" type="number"
+                           min="2" step="1" value="5" required>
+                </div>
+
+                <div class="campo-configuracao">
+                    <label for="numeroGeracoes">Número de gerações</label>
+                    <input id="numeroGeracoes" type="number"
+                           min="1" step="1" value="50" required>
+                </div>
+
+                <div class="campo-configuracao">
+                    <label for="taxaCruzamento">Taxa de cruzamento (%)</label>
+                    <input id="taxaCruzamento" type="number"
+                           min="0" max="100" step="any" value="80" required>
+                </div>
+
+                <div class="campo-configuracao">
+                    <label for="taxaMutacao">Taxa de mutação (%)</label>
+                    <input id="taxaMutacao" type="number"
+                           min="0" max="100" step="any" value="5" required>
+                </div>
+
+                <div class="campo-configuracao">
+                    <label for="tamanhoTorneio">Tamanho do torneio</label>
+                    <input id="tamanhoTorneio" type="number"
+                           min="2" step="1" value="2" required>
+                </div>
+
+                <div class="campo-configuracao">
+                    <label for="quantidadeElite">Quantidade de elite</label>
+                    <input id="quantidadeElite" type="number"
+                           min="0" step="1" value="1" required>
+                </div>
+
+                <div class="campo-configuracao">
+                    <label for="semente">Semente aleatória</label>
+                    <input id="semente" type="number"
+                           step="1" value="42" required>
+                </div>
             </div>
-            <p class="mensagem-erro" id="erroOrcamento"></p>
+
+            <p id="mensagemConfiguracao" class="mensagem-projetos" aria-live="polite"></p>
         </section>
 
-        <section>
-            <h2>População inicial</h2>
+        <section class="painel" aria-labelledby="titulo-execucao">
+            <h2 id="titulo-execucao">Execução</h2>
+            <p>Execute continuamente ou avance uma geração de cada vez.</p>
 
-            <p>
-                Cromossomos gerados para a geração 0,
-                após a reparação das soluções inviáveis.
+            <div class="controles-execucao">
+                <button type="button" id="executarSimulacao">Executar</button>
+                <button type="button" id="pausarSimulacao" class="botao-secundario">Pausar</button>
+                <button type="button" id="avancarSimulacao" class="botao-secundario">
+                    Avançar uma geração
+                </button>
+                <button type="button" id="reiniciarSimulacao" class="botao-neutro">
+                    Reiniciar
+                </button>
+            </div>
+
+            <p id="estadoExecucao" class="estado-execucao"
+               role="status" aria-live="polite">
+                Geração 0 · Simulação pronta
             </p>
+        </section>
+
+        <section class="painel" aria-labelledby="titulo-populacao">
+            <h2 id="titulo-populacao">População atual</h2>
+            <p>Cromossomos da geração atual, após a reparação das soluções inviáveis.</p>
 
             <div class="tabela-container">
                 <table>
                     <thead>
                         <tr>
-                            <th>Indivíduo</th>
-                            <th>Cromossomo</th>
-                            <th>Custo</th>
-                            <th>Benefício</th>
-                            <th>Aptidão</th>
+                            <th scope="col">Indivíduo</th>
+                            <th scope="col">Cromossomo</th>
+                            <th scope="col">Custo</th>
+                            <th scope="col">Benefício</th>
+                            <th scope="col">Aptidão</th>
                         </tr>
                     </thead>
-
                     <tbody id="tabelaPopulacao"></tbody>
                 </table>
             </div>
         </section>
+
+        <footer class="rodape">
+            <span>Atividade prática · Inteligência Artificial</span>
+            <a href="https://github.com/benjamimfilho11/simulador-algoritmo-genetico"
+               target="_blank" rel="noopener noreferrer">
+                Código-fonte no GitHub
+            </a>
+        </footer>
     </main>
+
     <script type="module" src="interface.js"></script>
 </body>
 </html>
