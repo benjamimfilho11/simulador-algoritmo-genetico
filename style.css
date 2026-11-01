@@ -10,6 +10,8 @@
     --cabecalho: #343c34;
     --tabela: #eeede6;
     --erro: #a33d34;
+    --verde-claro: #e6ece2;
+    --destaque: #d5dfce;
 }
 
 * {
@@ -70,6 +72,11 @@ main {
 h2 {
     font-size: 22px;
     margin: 0 0 6px;
+}
+
+h3 {
+    font-size: 17px;
+    margin: 27px 0 12px;
 }
 
 .painel > p,
@@ -278,6 +285,297 @@ button:disabled {
     font-weight: 600;
 }
 
+/* Métricas da simulação */
+
+.grade-metricas {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.metrica {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    padding: 18px;
+    background: #f5f5ef;
+    border: 1px solid var(--borda);
+    border-radius: 7px;
+}
+
+.metrica span {
+    font-size: 13px;
+    color: var(--secundario);
+}
+
+.metrica strong {
+    font-size: 26px;
+    line-height: 1.2;
+    color: var(--verde);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Gráfico de evolução */
+
+.grafico-container {
+    padding: 14px;
+    border: 1px solid var(--borda);
+    border-radius: 7px;
+    background: #fff;
+    overflow: hidden;
+}
+
+#graficoEvolucao {
+    display: block;
+    width: 100%;
+    height: auto;
+    min-height: 190px;
+}
+
+.grafico-grade {
+    stroke: #e6e5dd;
+    stroke-width: 1;
+}
+
+.grafico-eixo {
+    stroke: #999d91;
+    stroke-width: 1.5;
+}
+
+.grafico-texto {
+    fill: #696d64;
+    font-size: 12px;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.grafico-linha-melhor {
+    fill: none;
+    stroke: #485c43;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.grafico-linha-media {
+    fill: none;
+    stroke: #b18c57;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.grafico-linha-global {
+    fill: none;
+    stroke: #687f91;
+    stroke-width: 2;
+    stroke-dasharray: 6 4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.grafico-ponto {
+    fill: #485c43;
+}
+
+.legenda-grafico {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--secundario);
+}
+
+.legenda-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.legenda-cor {
+    width: 20px;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--verde);
+}
+
+.legenda-cor.media {
+    background: #b18c57;
+}
+
+.legenda-cor.global {
+    background: #687f91;
+}
+
+/* Melhor solução e histórico */
+
+.resultado-detalhe {
+    background: #f5f5ef;
+    border: 1px solid var(--borda);
+    border-left: 4px solid var(--verde);
+    border-radius: 5px;
+    padding: 18px;
+}
+
+.resultado-detalhe p {
+    margin: 5px 0;
+}
+
+.resultado-detalhe strong {
+    color: var(--texto);
+}
+
+.cromossomo-texto {
+    display: inline-block;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    overflow-wrap: anywhere;
+}
+
+.historico-container {
+    max-height: 380px;
+    overflow: auto;
+    border: 1px solid var(--borda);
+    border-radius: 6px;
+}
+
+.historico-container thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+/* Registros e operações genéticas */
+
+.eventos {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.eventos > p {
+    margin: 0;
+    color: var(--secundario);
+}
+
+.evento {
+    padding: 17px;
+    border: 1px solid var(--borda);
+    border-radius: 7px;
+    background: #fdfcf8;
+}
+
+.evento h3,
+.evento h4 {
+    margin: 0 0 10px;
+    font-size: 15px;
+}
+
+.evento p {
+    margin: 6px 0;
+    font-size: 14px;
+}
+
+.evento-detalhe {
+    font-size: 13px;
+    color: var(--secundario);
+}
+
+.evento-elite {
+    border-left: 4px solid #788869;
+}
+
+.evento-cruzamento {
+    border-left: 4px solid #687f91;
+}
+
+.evento-mutacao {
+    border-left: 4px solid #b18c57;
+}
+
+.evento-reparacao {
+    border-left: 4px solid #a66c55;
+}
+
+.evento-vazio {
+    color: var(--secundario);
+    font-style: italic;
+}
+
+/* Cromossomos e destaque dos genes */
+
+.visualizacao-cromossomo {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 10px 0;
+}
+
+.gene {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 34px;
+    height: 38px;
+    border: 1px solid #cdd2c8;
+    background: #f0f2ec;
+    border-radius: 4px;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 16px;
+    font-weight: 700;
+    color: #354732;
+}
+
+.gene-corte {
+    border-right: 3px solid #687f91;
+    margin-right: 7px;
+}
+
+.gene-mutado {
+    background: #f2e0ba;
+    border-color: #c39b54;
+    color: #76511e;
+    animation: destacarGene .65s ease;
+}
+
+.gene-removido {
+    background: #f0dcd5;
+    border-color: #b87967;
+    color: #844538;
+    animation: destacarGene .65s ease;
+}
+
+.gene-elite {
+    background: #dce8d5;
+    border-color: #829b78;
+}
+
+@keyframes destacarGene {
+    0% {
+        transform: scale(1);
+    }
+
+    40% {
+        transform: scale(1.14);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gene-mutado,
+    .gene-removido {
+        animation: none;
+    }
+}
+
+/* Rodapé */
+
 .rodape {
     display: flex;
     justify-content: space-between;
@@ -292,8 +590,11 @@ button:disabled {
     color: var(--verde);
 }
 
+/* Responsividade */
+
 @media (max-width: 850px) {
-    .grade-configuracoes {
+    .grade-configuracoes,
+    .grade-metricas {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
@@ -312,7 +613,8 @@ button:disabled {
         padding: 20px 15px;
     }
 
-    .grade-configuracoes {
+    .grade-configuracoes,
+    .grade-metricas {
         grid-template-columns: 1fr;
     }
 
@@ -324,6 +626,20 @@ button:disabled {
     .controles-projetos button,
     .controles-execucao button {
         width: 100%;
+    }
+
+    .metrica strong {
+        font-size: 23px;
+    }
+
+    .grafico-container {
+        padding: 7px;
+    }
+
+    .gene {
+        width: 29px;
+        height: 34px;
+        font-size: 14px;
     }
 
     th, td {

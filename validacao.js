@@ -1,6 +1,14 @@
-// Converte valores em reais para centavos
+
+"use strict";
+
+// Converte reais em centavos
 function lerValor(texto) {
+    if (typeof texto !== "string") {
+        return null;
+    }
+
     const partes = texto.trim().match(/^(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{1,2}))?$/);
+
     if (!partes) {
         return null;
     }
@@ -14,12 +22,14 @@ function lerValor(texto) {
 
 function transformarEmReais(valor) {
     return (valor / 100).toLocaleString("pt-BR", {
-        style: "currency", currency: "BRL"
+        style: "currency",
+        currency: "BRL"
     });
 }
 
 function formatarCampoValor(campo) {
     const valor = lerValor(campo.value);
+
     if (valor !== null) {
         campo.value = (valor / 100).toLocaleString("pt-BR", {
             minimumFractionDigits: 2,
@@ -35,7 +45,10 @@ function validarOrcamento() {
     const valido = valor !== null;
 
     campo.parentElement.classList.toggle("invalido", !valido);
-    erro.textContent = valido ? "" : "Informe um valor em reais, com até duas casas decimais.";
+
+    erro.textContent = valido
+        ? ""
+        : "Informe um valor em reais, com até duas casas decimais.";
 
     return valor;
 }
@@ -46,7 +59,14 @@ function lerBeneficio(texto) {
     }
 
     const valor = Number(texto.trim().replace(",", "."));
+
     return Number.isFinite(valor) && valor >= 0 ? valor : null;
 }
 
-export { lerValor, lerBeneficio, transformarEmReais, formatarCampoValor, validarOrcamento };
+export {
+    lerValor,
+    lerBeneficio,
+    transformarEmReais,
+    formatarCampoValor,
+    validarOrcamento
+};

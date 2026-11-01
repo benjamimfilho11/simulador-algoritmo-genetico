@@ -1,324 +1,455 @@
 
+"use strict";
+
 import {
-    lerValor,
-    lerBeneficio,
-    transformarEmReais,
-    formatarCampoValor,
-    validarOrcamento
+    lerValor, lerBeneficio, transformarEmReais,
+    formatarCampoValor, validarOrcamento
 } from "./validacao.js";
 
 import {
-    obterProjetos,
-    atualizarProjetos,
-    calcularAptidao,
-    obterConfiguracao,
-    obterEstadoSimulacao,
-    atualizarConfiguracao,
-    reiniciarSimulacao,
-    avancarGeracao
+    obterProjetos, atualizarProjetos, calcularAptidao,
+    obterConfiguracao, obterEstadoSimulacao,
+    atualizarConfiguracao, reiniciarSimulacao, avancarGeracao
 } from "./script.js";
 
-const campoOrcamento = document.getElementById("orcamento");
-const tabelaProjetos = document.getElementById("tabelaProjetos");
-const mensagemProjetos = document.getElementById("mensagemProjetos");
-const mensagemConfiguracao = document.getElementById("mensagemConfiguracao");
-const quantidadeProjetos = document.getElementById("quantidadeProjetos");
+const $ = id => document.getElementById(id);
+const formato = valor => Number(valor).toLocaleString("pt-BR", {
+    maximumFractionDigits: 2
+});
 
-const botaoAdicionar = document.getElementById("adicionarProjeto");
-const botaoSalvar = document.getElementById("salvarProjetos");
-const botaoDesfazer = document.getElementById("desfazerProjetos");
-
-const botaoExecutar = document.getElementById("executarSimulacao");
-const botaoPausar = document.getElementById("pausarSimulacao");
-const botaoAvancar = document.getElementById("avancarSimulacao");
-const botaoReiniciar = document.getElementById("reiniciarSimulacao");
-
-const estadoExecucao = document.getElementById("estadoExecucao");
-
-const camposConfiguracao = [
-    "tamanhoPopulacao",
-    "numeroGeracoes",
-    "taxaCruzamento",
-    "taxaMutacao",
-    "tamanhoTorneio",
-    "quantidadeElite",
-    "semente"
+const campos = [
+    "tamanhoPopulacao", "numeroGeracoes", "taxaCruzamento",
+    "taxaMutacao", "tamanhoTorneio", "quantidadeElite", "semente"
 ];
 
 let temporizador = null;
-let alteracoesProjetos = false;
+let projetosPendentes = false;
 let configuracaoPendente = false;
 
-// Converte os projetos para os campos de edição
 function criarRascunho(projeto) {
     return {
         nome: projeto.nome,
-        custoTexto: (projeto.custo / 100).toLocaleString("pt-BR", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        }),
-        beneficioTexto: String(projeto.beneficio).replace(".", ",")
+        custo: (projeto.custo / 100).toFixed(2).replace(".", ","),
+        beneficio: String(projeto.beneficio).replace(".", ",")
     };
 }
 
-let projetosEmEdicao = obterProjetos().map(criarRascunho);
+let rascunho = obterProjetos().map(criarRascunho);
 
-function mostrarMensagem(texto, erro = false) {
-    mensagemProjetos.textContent = texto;
-    mensagemProjetos.classList.toggle("erro", erro);
+function mensagem(id, texto, erro = false) {
+    $(id).textContent = texto;
+    $(id).classList.toggle("erro", erro);
 }
 
-function mostrarMensagemConfiguracao(texto, erro = false) {
-    mensagemConfiguracao.textContent = texto;
-    mensagemConfiguracao.classList.toggle("erro", erro);
+function criarElemento(tag, texto = "", classe = "") {
+    const elemento = document.createElement(tag);
+    elemento.textContent = texto;
+    if (classe) elemento.className = classe;
+    return elemento;
 }
 
-function preencherConfiguracoes() {
-    const configuracao = obterConfiguracao();
+function preencherConfiguracao() {
+    const config = obterConfiguracao();
 
-    campoOrcamento.value = String(configuracao.orcamento / 100).replace(".", ",");
-    formatarCampoValor(campoOrcamento);
+    $("orcamento").value = (config.orcamento / 100).toFixed(2).replace(".", ",");
+    formatarCampoValor($("orcamento"));
 
-    camposConfiguracao.forEach(function(nome) {
-        document.getElementById(nome).value = configuracao[nome];
-    });
-}
-
-// Cria os campos editáveis de cada projeto
-function criarCampo(linha, valor, rotulo, indice, propriedade, moeda = false) {
-    const coluna = linha.insertCell();
-    const campo = document.createElement("input");
-
-    campo.type = "text";
-    campo.className = "campo-projeto";
-    campo.value = valor;
-    campo.setAttribute("aria-label", rotulo);
-
-    if (propriedade === "nome") {
-        campo.maxLength = 120;
-        campo.classList.add("campo-nome");
-    } else {
-        campo.inputMode = "decimal";
-    }
-
-    campo.addEventListener("input", function() {
-        pausarExecucao();
-        alteracoesProjetos = true;
-        projetosEmEdicao[indice][propriedade] = campo.value;
-        mostrarMensagem("Existem alterações ainda não salvas.");
-        atualizarBotoes();
-    });
-
-    if (moeda) {
-        campo.addEventListener("blur", function() {
-            formatarCampoValor(campo);
-            projetosEmEdicao[indice][propriedade] = campo.value;
-        });
-    }
-
-    coluna.appendChild(campo);
+    campos.forEach(id => $(id).value = config[id]);
 }
 
 function exibirProjetos() {
-    tabelaProjetos.innerHTML = "";
+    const tabela = $("tabelaProjetos");
+    tabela.replaceChildren();
 
-    projetosEmEdicao.forEach(function(projeto, indice) {
-        const linha = tabelaProjetos.insertRow();
-
-        criarCampo(linha, projeto.nome, `Nome do projeto ${indice + 1}`, indice, "nome");
-        criarCampo(linha, projeto.custoTexto, `Custo do projeto ${indice + 1}`, indice, "custoTexto", true);
-        criarCampo(linha, projeto.beneficioTexto, `Benefício do projeto ${indice + 1}`, indice, "beneficioTexto");
-
-        const colunaAcoes = linha.insertCell();
-        const remover = document.createElement("button");
-
-        remover.type = "button";
-        remover.textContent = "Remover";
-        remover.className = "botao-perigo";
-        remover.disabled = projetosEmEdicao.length <= 4;
-
-        remover.addEventListener("click", function() {
-            if (projetosEmEdicao.length <= 4) {
-                return;
-            }
-
-            pausarExecucao();
-            projetosEmEdicao.splice(indice, 1);
-            alteracoesProjetos = true;
-
-            exibirProjetos();
-            atualizarBotoes();
-            mostrarMensagem("Projeto removido da edição. Salve para confirmar.");
-        });
-
-        colunaAcoes.appendChild(remover);
-    });
-
-    quantidadeProjetos.textContent = `${projetosEmEdicao.length} de 15 projetos`;
-    botaoAdicionar.disabled = projetosEmEdicao.length >= 15;
-}
-
-// Atualiza a tabela com a população atual
-function exibirPopulacao(populacao) {
-    const tabela = document.getElementById("tabelaPopulacao");
-    tabela.innerHTML = "";
-
-    populacao.forEach(function(cromossomo, indice) {
-        const resultado = calcularAptidao(cromossomo);
+    rascunho.forEach((projeto, indice) => {
         const linha = tabela.insertRow();
 
-        const valores = [
-            indice + 1,
-            resultado.cromossomo,
-            transformarEmReais(resultado.custoTotal),
-            resultado.beneficioTotal,
-            resultado.aptidao
-        ];
+        ["nome", "custo", "beneficio"].forEach(chave => {
+            const campo = criarElemento("input");
+            campo.type = "text";
+            campo.value = projeto[chave];
+            campo.className = chave === "nome"
+                ? "campo-projeto campo-nome" : "campo-projeto";
+            campo.setAttribute("aria-label", `${chave} do projeto ${indice + 1}`);
 
-        valores.forEach(function(valor) {
-            const coluna = linha.insertCell();
-            coluna.textContent = valor;
+            if (chave === "nome") {
+                campo.maxLength = 120;
+            } else {
+                campo.inputMode = "decimal";
+            }
+
+            campo.addEventListener("input", () => {
+                pausar();
+                rascunho[indice][chave] = campo.value;
+                projetosPendentes = true;
+                mensagem("mensagemProjetos", "Existem alterações não salvas.");
+                atualizarBotoes();
+            });
+
+            if (chave === "custo") {
+                campo.addEventListener("blur", () => {
+                    formatarCampoValor(campo);
+                    rascunho[indice][chave] = campo.value;
+                });
+            }
+
+            linha.insertCell().appendChild(campo);
         });
+
+        const remover = criarElemento("button", "Remover", "botao-perigo");
+        remover.disabled = rascunho.length <= 4;
+
+        remover.addEventListener("click", () => {
+            pausar();
+            rascunho.splice(indice, 1);
+            projetosPendentes = true;
+            exibirProjetos();
+            atualizarBotoes();
+            mensagem("mensagemProjetos", "Projeto removido. Salve as alterações.");
+        });
+
+        linha.insertCell().appendChild(remover);
     });
+
+    $("quantidadeProjetos").textContent = `${rascunho.length} de 15 projetos`;
+    $("adicionarProjeto").disabled = rascunho.length >= 15;
 }
 
-// Atualiza a interface após cada geração
-function atualizarSimulacao() {
-    const estado = obterEstadoSimulacao();
+function salvarProjetos() {
+    pausar();
 
-    exibirPopulacao(estado.populacao);
+    try {
+        const novos = rascunho.map(projeto => ({
+            nome: projeto.nome,
+            custo: lerValor(projeto.custo),
+            beneficio: lerBeneficio(projeto.beneficio)
+        }));
 
-    if (estado.finalizada) {
-        pararTemporizador();
-        estadoExecucao.textContent =
-            `Geração ${estado.geracao} · Simulação finalizada`;
-    } else if (temporizador !== null) {
-        estadoExecucao.textContent =
-            `Geração ${estado.geracao} · Executando`;
-    } else {
-        estadoExecucao.textContent =
-            `Geração ${estado.geracao} · Pausada`;
+        atualizarProjetos(novos);
+        rascunho = obterProjetos().map(criarRascunho);
+        projetosPendentes = false;
+
+        exibirProjetos();
+        atualizarTela();
+        mensagem("mensagemProjetos", "Projetos salvos.");
+    } catch (erro) {
+        mensagem("mensagemProjetos", erro.message, true);
+    }
+}
+
+function lerConfiguracao() {
+    const config = {};
+
+    campos.forEach(id => {
+        const campo = $(id);
+        if (campo.value.trim() === "") {
+            throw new Error(`Preencha o campo ${campo.labels[0].textContent}.`);
+        }
+
+        config[id] = Number(campo.value);
+    });
+
+    config.orcamento = validarOrcamento();
+
+    if (config.orcamento === null) {
+        throw new Error("Informe um orçamento válido.");
+    }
+
+    return config;
+}
+
+function aplicarConfiguracao() {
+    pausar();
+
+    try {
+        atualizarConfiguracao(lerConfiguracao());
+        configuracaoPendente = false;
+        preencherConfiguracao();
+        atualizarTela();
+        mensagem("mensagemConfiguracao", "Configurações aplicadas.");
+    } catch (erro) {
+        configuracaoPendente = true;
+        mensagem("mensagemConfiguracao", erro.message, true);
     }
 
     atualizarBotoes();
+}
+
+function preencherTabela(id, linhas) {
+    const tabela = $(id);
+    tabela.replaceChildren();
+
+    linhas.forEach(valores => {
+        const linha = tabela.insertRow();
+        valores.forEach(valor => {
+            linha.insertCell().textContent = valor;
+        });
+    });
+}
+
+function exibirResultados(estado) {
+    const ultimo = estado.historico.at(-1);
+    const melhor = estado.melhorGlobal;
+
+    preencherTabela("tabelaPopulacao", estado.populacao.map((c, i) => {
+        const r = calcularAptidao(c);
+        return [
+            i + 1, r.cromossomo, transformarEmReais(r.custoTotal),
+            formato(r.beneficioTotal), formato(r.aptidao)
+        ];
+    }));
+
+    $("metricaGeracao").textContent = estado.geracao;
+    $("metricaMelhor").textContent = formato(ultimo.melhorAptidao);
+    $("metricaMedia").textContent = formato(ultimo.aptidaoMedia);
+    $("metricaGlobal").textContent = formato(ultimo.melhorAcumulado);
+
+    preencherTabela("tabelaHistorico", estado.historico.map(r => [
+        r.geracao, formato(r.melhorAptidao),
+        formato(r.aptidaoMedia), formato(r.melhorAcumulado)
+    ]));
+
+    const detalhe = $("melhorSolucao");
+    detalhe.replaceChildren();
+
+    const dados = [
+        ["Cromossomo", melhor.cromossomo],
+        ["Projetos", melhor.projetosSelecionados.join(", ") || "Nenhum"],
+        ["Custo", transformarEmReais(melhor.custoTotal)],
+        ["Benefício", formato(melhor.beneficioTotal)],
+        ["Saldo", transformarEmReais(melhor.saldo)],
+        ["Aptidão", formato(melhor.aptidao)],
+        ["Geração encontrada", melhor.geracao]
+    ];
+
+    dados.forEach(([nome, valor]) => {
+        const p = criarElemento("p");
+        const strong = criarElemento("strong", `${nome}: `);
+        p.append(strong, document.createTextNode(String(valor)));
+        detalhe.appendChild(p);
+    });
+
+    exibirGrafico(estado.historico);
+}
+
+// Desenha as três curvas da evolução
+function exibirGrafico(historico) {
+    const svg = $("graficoEvolucao");
+    const ns = "http://www.w3.org/2000/svg";
+    svg.replaceChildren();
+
+    function elemento(tag, atributos, texto = "") {
+        const e = document.createElementNS(ns, tag);
+        Object.entries(atributos).forEach(([k, v]) => e.setAttribute(k, v));
+        e.textContent = texto;
+        svg.appendChild(e);
+    }
+
+    const largura = 800, altura = 260;
+    const maxX = Math.max(1, historico.at(-1).geracao);
+    const maxY = Math.max(1, ...historico.map(r => r.melhorAcumulado));
+
+    const x = n => 55 + n / maxX * 720;
+    const y = n => 215 - n / maxY * 175;
+
+    for (let i = 0; i <= 4; i++) {
+        const valor = maxY * i / 4;
+        elemento("line", {
+            x1: 55, y1: y(valor), x2: 775, y2: y(valor),
+            class: "grafico-grade"
+        });
+        elemento("text", {
+            x: 47, y: y(valor) + 4,
+            "text-anchor": "end", class: "grafico-texto"
+        }, formato(valor));
+    }
+
+    elemento("line", {
+        x1: 55, y1: 40, x2: 55, y2: 215, class: "grafico-eixo"
+    });
+    elemento("line", {
+        x1: 55, y1: 215, x2: 775, y2: 215, class: "grafico-eixo"
+    });
+
+    const series = [
+        ["melhorAptidao", "grafico-linha-melhor"],
+        ["aptidaoMedia", "grafico-linha-media"],
+        ["melhorAcumulado", "grafico-linha-global"]
+    ];
+
+    series.forEach(([campo, classe]) => {
+        const pontos = historico.map(r =>
+            `${x(r.geracao)},${y(r[campo])}`
+        ).join(" ");
+
+        elemento("polyline", { points: pontos, class: classe });
+    });
+
+    elemento("text", {
+        x: 55, y: 245, class: "grafico-texto"
+    }, "Geração 0");
+
+    elemento("text", {
+        x: 775, y: 245, "text-anchor": "end", class: "grafico-texto"
+    }, `Geração ${historico.at(-1).geracao}`);
+
+    const legendas = [
+        ["Melhor geração", "#485c43"],
+        ["Média", "#b18c57"],
+        ["Melhor acumulado", "#687f91"]
+    ];
+
+    legendas.forEach(([nome, cor], i) => {
+        const pos = [55, 255, 395][i];
+        elemento("line", {
+            x1: pos, y1: 18, x2: pos + 22, y2: 18,
+            stroke: cor, "stroke-width": 3
+        });
+        elemento("text", {
+            x: pos + 28, y: 22, class: "grafico-texto"
+        }, nome);
+    });
+}
+
+function cromossomoVisual(texto, destacados = [], classe = "", corte = null) {
+    const div = criarElemento("div", "", "visualizacao-cromossomo");
+
+    [...texto].forEach((bit, i) => {
+        const gene = criarElemento("span", bit, "gene");
+        if (destacados.includes(i)) gene.classList.add(classe);
+        if (corte !== null && i === corte - 1) gene.classList.add("gene-corte");
+        div.appendChild(gene);
+    });
+
+    return div;
+}
+
+// Mostra os eventos da última geração
+function exibirEventos(eventos, geracao) {
+    const painel = $("painelEventos");
+    painel.replaceChildren();
+
+    if (geracao === 0 || eventos.length === 0) {
+        painel.appendChild(criarElemento(
+            "p", "Avance uma geração para visualizar as operações."
+        ));
+        return;
+    }
+
+    let numeroReproducao = 0;
+
+    eventos.forEach(evento => {
+        const bloco = criarElemento("div", "", "evento");
+
+        if (evento.tipo === "elitismo") {
+            bloco.classList.add("evento-elite");
+            bloco.appendChild(criarElemento("h3", "Elitismo"));
+
+            if (!evento.individuos.length) {
+                bloco.appendChild(criarElemento("p", "Nenhum indivíduo preservado."));
+            }
+
+            evento.individuos.forEach(ind => {
+                bloco.appendChild(criarElemento(
+                    "p", `Indivíduo ${ind.indice + 1} · Aptidão ${formato(ind.aptidao)}`
+                ));
+                bloco.appendChild(cromossomoVisual(
+                    ind.cromossomo,
+                    [...ind.cromossomo].map((_, i) => i), "gene-elite"
+                ));
+            });
+
+            painel.appendChild(bloco);
+            return;
+        }
+
+        if (evento.tipo !== "reproducao") return;
+
+        numeroReproducao++;
+        bloco.classList.add("evento-cruzamento");
+        bloco.appendChild(criarElemento("h3", `Reprodução ${numeroReproducao}`));
+
+        evento.pais.forEach((torneio, i) => {
+            const candidatos = torneio.candidatos.map(c =>
+                `${c.indice + 1} (${c.cromossomo}, aptidão ${formato(c.aptidao)})`
+            ).join("; ");
+
+            bloco.appendChild(criarElemento(
+                "p", `Torneio ${i + 1}: ${candidatos}`, "evento-detalhe"
+            ));
+            bloco.appendChild(criarElemento(
+                "p", `Pai ${i + 1}: indivíduo ${torneio.vencedor + 1}`
+            ));
+            bloco.appendChild(cromossomoVisual(torneio.cromossomo));
+        });
+
+        const cruz = evento.cruzamento;
+
+        bloco.appendChild(criarElemento(
+            "p", cruz.ocorreu
+                ? `Cruzamento após o gene ${cruz.pontoCorte}.`
+                : "Não ocorreu cruzamento."
+        ));
+
+        cruz.filhos.forEach((filho, i) => {
+            bloco.appendChild(criarElemento("p", `Filho ${i + 1}:`));
+            bloco.appendChild(cromossomoVisual(
+                filho, [], "", cruz.pontoCorte
+            ));
+        });
+
+        evento.descendentes.forEach((desc, i) => {
+            const mut = desc.mutacao;
+            const rep = desc.reparacao;
+
+            bloco.appendChild(criarElemento(
+                "p", `Filho ${i + 1} após mutação: ${mut.depois}`
+            ));
+            bloco.appendChild(cromossomoVisual(
+                mut.depois, mut.indices, "gene-mutado"
+            ));
+
+            rep.etapas.forEach(etapa => {
+                bloco.appendChild(criarElemento(
+                    "p", `Reparação: removido ${etapa.projeto}`
+                ));
+                bloco.appendChild(cromossomoVisual(
+                    etapa.cromossomo, [etapa.indice], "gene-removido"
+                ));
+            });
+
+            bloco.appendChild(criarElemento(
+                "p", `Resultado: ${rep.depois} · Aptidão ${formato(desc.aptidao)}`
+            ));
+        });
+
+        painel.appendChild(bloco);
+    });
 }
 
 function atualizarBotoes() {
     const estado = obterEstadoSimulacao();
-    const executando = temporizador !== null;
-    const bloqueado = alteracoesProjetos || configuracaoPendente;
+    const bloqueado = projetosPendentes || configuracaoPendente;
 
-    botaoExecutar.disabled = executando || estado.finalizada || bloqueado;
-    botaoPausar.disabled = !executando;
-    botaoAvancar.disabled = executando || estado.finalizada || bloqueado;
-    botaoReiniciar.disabled = false;
+    $("executarSimulacao").disabled =
+        temporizador !== null || estado.finalizada || bloqueado;
+    $("pausarSimulacao").disabled = temporizador === null;
+    $("avancarSimulacao").disabled =
+        temporizador !== null || estado.finalizada || bloqueado;
 }
 
-// Salva os projetos após validar os dados
-function salvarProjetos() {
-    const novosProjetos = projetosEmEdicao.map(function(projeto) {
-        return {
-            nome: projeto.nome,
-            custo: lerValor(projeto.custoTexto),
-            beneficio: lerBeneficio(projeto.beneficioTexto)
-        };
-    });
+function atualizarTela() {
+    const estado = obterEstadoSimulacao();
 
-    try {
-        pausarExecucao();
-        atualizarProjetos(novosProjetos);
+    exibirResultados(estado);
+    exibirEventos(estado.eventos, estado.geracao);
 
-        projetosEmEdicao = obterProjetos().map(criarRascunho);
-        alteracoesProjetos = false;
+    if (estado.finalizada) pararTemporizador();
 
-        exibirProjetos();
-        atualizarSimulacao();
-        mostrarMensagem("Projetos salvos. Simulação reiniciada.");
-    } catch (erro) {
-        mostrarMensagem(erro.message, true);
-        atualizarBotoes();
-    }
-}
-
-function adicionarProjeto() {
-    if (projetosEmEdicao.length >= 15) {
-        mostrarMensagem("O limite é de 15 projetos.", true);
-        return;
-    }
-
-    pausarExecucao();
-
-    projetosEmEdicao.push({
-        nome: "",
-        custoTexto: "",
-        beneficioTexto: "0"
-    });
-
-    alteracoesProjetos = true;
-
-    exibirProjetos();
-    atualizarBotoes();
-    mostrarMensagem("Preencha o novo projeto e clique em Salvar projetos.");
-}
-
-function desfazerAlteracoes() {
-    projetosEmEdicao = obterProjetos().map(criarRascunho);
-    alteracoesProjetos = false;
-
-    exibirProjetos();
-    atualizarBotoes();
-    mostrarMensagem("Alterações não salvas foram desfeitas.");
-}
-
-// Lê e valida os parâmetros da simulação
-function lerConfiguracoes() {
-    const valores = {};
-
-    camposConfiguracao.forEach(function(nome) {
-        const campo = document.getElementById(nome);
-        const texto = campo.value.trim();
-
-        if (texto === "") {
-            throw new Error(`Preencha o campo ${campo.labels[0].textContent}.`);
-        }
-
-        const valor = Number(texto);
-
-        if (!Number.isFinite(valor)) {
-            throw new Error(`Valor inválido no campo ${campo.labels[0].textContent}.`);
-        }
-
-        valores[nome] = valor;
-    });
-
-    const orcamento = validarOrcamento();
-
-    if (orcamento === null) {
-        throw new Error("Informe um orçamento válido.");
-    }
-
-    valores.orcamento = orcamento;
-
-    return valores;
-}
-
-// Aplica os parâmetros e reinicia quando necessário
-function aplicarConfiguracoes() {
-    pausarExecucao();
-
-    try {
-        const valores = lerConfiguracoes();
-
-        atualizarConfiguracao(valores);
-        configuracaoPendente = false;
-
-        preencherConfiguracoes();
-        atualizarSimulacao();
-        mostrarMensagemConfiguracao("Configurações aplicadas.");
-    } catch (erro) {
-        configuracaoPendente = true;
-        mostrarMensagemConfiguracao(erro.message, true);
-    }
+    $("estadoExecucao").textContent = estado.finalizada
+        ? `Geração ${estado.geracao} · Finalizada`
+        : `Geração ${estado.geracao} · ` +
+          (temporizador === null ? "Pausada" : "Executando");
 
     atualizarBotoes();
 }
@@ -330,114 +461,100 @@ function pararTemporizador() {
     }
 }
 
-// Pausa sem alterar a população ou o histórico
-function pausarExecucao() {
+function pausar() {
     pararTemporizador();
-
     const estado = obterEstadoSimulacao();
 
-    if (!estado.finalizada) {
-        estadoExecucao.textContent =
-            `Geração ${estado.geracao} · Pausada`;
-    }
+    $("estadoExecucao").textContent = estado.finalizada
+        ? `Geração ${estado.geracao} · Finalizada`
+        : `Geração ${estado.geracao} · Pausada`;
 
     atualizarBotoes();
 }
 
-// Produz exatamente uma nova geração
-function executarUmaGeracao() {
+function avancar() {
     try {
         avancarGeracao();
-        atualizarSimulacao();
+        atualizarTela();
     } catch (erro) {
-        pararTemporizador();
-        estadoExecucao.textContent = `Erro: ${erro.message}`;
-        atualizarBotoes();
+        pausar();
+        $("estadoExecucao").textContent = `Erro: ${erro.message}`;
     }
 }
 
-// Executa continuamente, preservando o estado
-function executarSimulacao() {
-    if (temporizador !== null || alteracoesProjetos || configuracaoPendente) {
-        return;
-    }
-
-    if (obterEstadoSimulacao().finalizada) {
-        return;
-    }
-
-    temporizador = setInterval(executarUmaGeracao, 500);
-    atualizarSimulacao();
+function executar() {
+    if ($("executarSimulacao").disabled) return;
+    temporizador = setInterval(avancar, 500);
+    atualizarTela();
 }
 
-// Avança uma geração e permanece pausado
-function avancarUmaGeracao() {
-    if (temporizador !== null || alteracoesProjetos || configuracaoPendente) {
-        return;
-    }
+function reiniciar() {
+    pausar();
 
-    executarUmaGeracao();
-}
-
-// Reinicia a população, o histórico e a semente
-function reiniciarExecucao() {
-    pausarExecucao();
-
-    if (alteracoesProjetos || configuracaoPendente) {
-        mostrarMensagemConfiguracao(
-            "Salve ou desfaça as alterações pendentes antes de reiniciar.",
+    if (projetosPendentes || configuracaoPendente) {
+        mensagem(
+            "mensagemConfiguracao",
+            "Resolva as alterações pendentes antes de reiniciar.",
             true
         );
         return;
     }
 
     reiniciarSimulacao();
-    atualizarSimulacao();
-
-    estadoExecucao.textContent = "Geração 0 · Simulação pronta";
+    atualizarTela();
+    $("estadoExecucao").textContent = "Geração 0 · Simulação pronta";
 }
 
-// Eventos dos projetos
-botaoAdicionar.addEventListener("click", adicionarProjeto);
-botaoSalvar.addEventListener("click", salvarProjetos);
-botaoDesfazer.addEventListener("click", desfazerAlteracoes);
+// Eventos da interface
+$("adicionarProjeto").addEventListener("click", () => {
+    if (rascunho.length >= 15) return;
 
-// Eventos dos parâmetros
-camposConfiguracao.forEach(function(nome) {
-    const campo = document.getElementById(nome);
-
-    campo.addEventListener("input", function() {
-        pausarExecucao();
-        configuracaoPendente = true;
-        mostrarMensagemConfiguracao("Existem alterações pendentes.");
-        atualizarBotoes();
-    });
-
-    campo.addEventListener("change", aplicarConfiguracoes);
+    pausar();
+    rascunho.push({ nome: "", custo: "", beneficio: "0" });
+    projetosPendentes = true;
+    exibirProjetos();
+    atualizarBotoes();
 });
 
-campoOrcamento.addEventListener("input", function() {
-    pausarExecucao();
+$("salvarProjetos").addEventListener("click", salvarProjetos);
+
+$("desfazerProjetos").addEventListener("click", () => {
+    rascunho = obterProjetos().map(criarRascunho);
+    projetosPendentes = false;
+    exibirProjetos();
+    atualizarBotoes();
+    mensagem("mensagemProjetos", "Alterações desfeitas.");
+});
+
+campos.forEach(id => {
+    $(id).addEventListener("input", () => {
+        pausar();
+        configuracaoPendente = true;
+        atualizarBotoes();
+        mensagem("mensagemConfiguracao", "Existem alterações pendentes.");
+    });
+
+    $(id).addEventListener("change", aplicarConfiguracao);
+});
+
+$("orcamento").addEventListener("input", () => {
+    pausar();
     configuracaoPendente = true;
     validarOrcamento();
     atualizarBotoes();
 });
 
-campoOrcamento.addEventListener("change", aplicarConfiguracoes);
-
-campoOrcamento.addEventListener("blur", function() {
-    formatarCampoValor(campoOrcamento);
+$("orcamento").addEventListener("change", aplicarConfiguracao);
+$("orcamento").addEventListener("blur", () => {
+    formatarCampoValor($("orcamento"));
 });
 
-// Eventos dos controles
-botaoExecutar.addEventListener("click", executarSimulacao);
-botaoPausar.addEventListener("click", pausarExecucao);
-botaoAvancar.addEventListener("click", avancarUmaGeracao);
-botaoReiniciar.addEventListener("click", reiniciarExecucao);
+$("executarSimulacao").addEventListener("click", executar);
+$("pausarSimulacao").addEventListener("click", pausar);
+$("avancarSimulacao").addEventListener("click", avancar);
+$("reiniciarSimulacao").addEventListener("click", reiniciar);
 
-// Inicialização da interface
 exibirProjetos();
-preencherConfiguracoes();
-atualizarSimulacao();
-
-estadoExecucao.textContent = "Geração 0 · Simulação pronta";
+preencherConfiguracao();
+atualizarTela();
+$("estadoExecucao").textContent = "Geração 0 · Simulação pronta";
