@@ -13,7 +13,7 @@ Trabalho prático da disciplina de Inteligência Artificial da Universidade Fede
 
 O projeto consiste em um simulador de algoritmo genético desenvolvido para selecionar projetos de melhoria de um campus universitário, respeitando um orçamento disponível.
 
-Cada projeto possui nome, custo e benefício. O objetivo é encontrar uma combinação de projetos que maximize o benefício total sem ultrapassar o orçamento.
+Cada projeto possui nome, custo e benefício. O objetivo é encontrar uma combinação de projetos que maximize o benefício total sem ultrapassar o orçamento. 
 
 O simulador permite cadastrar de 4 a 15 projetos, configurar os parâmetros do algoritmo e acompanhar a evolução das soluções ao longo das gerações.
 
