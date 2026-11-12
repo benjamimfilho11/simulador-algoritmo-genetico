@@ -143,6 +143,15 @@
                 </button>
             </div>
 
+            <div class="campo-velocidade">
+                <label for="velocidadeExecucao">Velocidade da execução</label>
+                <select id="velocidadeExecucao">
+                    <option value="1000">Lenta (1 geração por segundo)</option>
+                    <option value="500" selected>Normal (2 gerações por segundo)</option>
+                    <option value="150">Rápida (cerca de 7 gerações por segundo)</option>
+                </select>
+            </div>
+
             <p id="estadoExecucao" class="estado-execucao"
                role="status" aria-live="polite">
                 Geração 0 · Simulação pronta
@@ -226,6 +235,35 @@
                     <tbody id="tabelaHistorico"></tbody>
                 </table>
             </div>
+        </section>
+
+        <!-- Animação de uma reprodução -->
+        <section class="painel" aria-labelledby="titulo-animacao">
+            <h2 id="titulo-animacao">Animação da reprodução</h2>
+            <p>
+                Veja, passo a passo, uma reprodução real da última geração:
+                torneios, corte, troca de segmentos, mutação e reparação.
+            </p>
+
+            <div class="controles-animacao">
+                <div class="campo-velocidade">
+                    <label for="reproducaoAnimada">Reprodução</label>
+                    <select id="reproducaoAnimada"></select>
+                </div>
+                <div class="campo-velocidade">
+                    <label for="velocidadeAnimacao">Velocidade da animação</label>
+                    <select id="velocidadeAnimacao">
+                        <option value="1600">Lenta</option>
+                        <option value="900" selected>Normal</option>
+                        <option value="400">Rápida</option>
+                    </select>
+                </div>
+                <button type="button" id="reproduzirAnimacao">
+                    Reproduzir animação
+                </button>
+            </div>
+
+            <div id="palcoAnimacao" class="palco-animacao"></div>
         </section>
 
         <!-- Visualização das operações genéticas -->

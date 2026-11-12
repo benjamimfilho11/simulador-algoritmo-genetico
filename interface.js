@@ -12,6 +12,9 @@ import {
     atualizarConfiguracao, reiniciarSimulacao, avancarGeracao
 } from "./script.js";
 
+import { descreverReproducao, descreverElitismo } from "./narrativa.js";
+import { animarReproducao, cancelarAnimacao } from "./animacao.js";
+
 const $ = id => document.getElementById(id);
 const formato = valor => Number(valor).toLocaleString("pt-BR", {
     maximumFractionDigits: 2
@@ -128,6 +131,7 @@ function salvarProjetos() {
         atualizarProjetos(novos);
         rascunho = obterProjetos().map(criarRascunho);
         projetosPendentes = false;
+        resetarAnimacao();
 
         exibirProjetos();
         atualizarTela();
@@ -164,6 +168,7 @@ function aplicarConfiguracao() {
     try {
         atualizarConfiguracao(lerConfiguracao());
         configuracaoPendente = false;
+        resetarAnimacao();
         preencherConfiguracao();
         atualizarTela();
         mensagem("mensagemConfiguracao", "Configurações aplicadas.");
@@ -336,6 +341,12 @@ function exibirEventos(eventos, geracao) {
         return;
     }
 
+    painel.appendChild(criarElemento(
+        "p",
+        `Geração ${geracao}: índices referem-se à população da geração ${geracao - 1}.`,
+        "evento-detalhe"
+    ));
+
     let numeroReproducao = 0;
 
     eventos.forEach(evento => {
@@ -345,18 +356,16 @@ function exibirEventos(eventos, geracao) {
             bloco.classList.add("evento-elite");
             bloco.appendChild(criarElemento("h3", "Elitismo"));
 
-            if (!evento.individuos.length) {
-                bloco.appendChild(criarElemento("p", "Nenhum indivíduo preservado."));
-            }
+            descreverElitismo(evento).forEach((linha, i) => {
+                const ind = evento.individuos[i];
+                bloco.appendChild(criarElemento("p", linha));
 
-            evento.individuos.forEach(ind => {
-                bloco.appendChild(criarElemento(
-                    "p", `Indivíduo ${ind.indice + 1} · Aptidão ${formato(ind.aptidao)}`
-                ));
-                bloco.appendChild(cromossomoVisual(
-                    ind.cromossomo,
-                    [...ind.cromossomo].map((_, i) => i), "gene-elite"
-                ));
+                if (ind) {
+                    bloco.appendChild(cromossomoVisual(
+                        ind.cromossomo,
+                        [...ind.cromossomo].map((_, j) => j), "gene-elite"
+                    ));
+                }
             });
 
             painel.appendChild(bloco);
@@ -369,59 +378,53 @@ function exibirEventos(eventos, geracao) {
         bloco.classList.add("evento-cruzamento");
         bloco.appendChild(criarElemento("h3", `Reprodução ${numeroReproducao}`));
 
+        const linhas = descreverReproducao(evento);
+        const cruz = evento.cruzamento;
+
         evento.pais.forEach((torneio, i) => {
             const candidatos = torneio.candidatos.map(c =>
                 `${c.indice + 1} (${c.cromossomo}, aptidão ${formato(c.aptidao)})`
             ).join("; ");
 
             bloco.appendChild(criarElemento(
-                "p", `Torneio ${i + 1}: ${candidatos}`, "evento-detalhe"
+                "p", `Torneio ${i + 1}: candidatos ${candidatos}`, "evento-detalhe"
             ));
-            bloco.appendChild(criarElemento(
-                "p", `Pai ${i + 1}: indivíduo ${torneio.vencedor + 1}`
-            ));
-            bloco.appendChild(cromossomoVisual(torneio.cromossomo));
         });
 
-        const cruz = evento.cruzamento;
+        bloco.appendChild(criarElemento("p", linhas[0]));
+        evento.pais.forEach(torneio => {
+            bloco.appendChild(cromossomoVisual(torneio.cromossomo, [], "", cruz.pontoCorte));
+        });
 
-        bloco.appendChild(criarElemento(
-            "p", cruz.ocorreu
-                ? `Cruzamento após o gene ${cruz.pontoCorte}.`
-                : "Não ocorreu cruzamento."
-        ));
-
-        cruz.filhos.forEach((filho, i) => {
-            bloco.appendChild(criarElemento("p", `Filho ${i + 1}:`));
-            bloco.appendChild(cromossomoVisual(
-                filho, [], "", cruz.pontoCorte
-            ));
+        bloco.appendChild(criarElemento("p", linhas[1]));
+        cruz.filhos.forEach(filho => {
+            bloco.appendChild(cromossomoVisual(filho, [], "", cruz.pontoCorte));
         });
 
         evento.descendentes.forEach((desc, i) => {
-            const mut = desc.mutacao;
-            const rep = desc.reparacao;
+            const [linhaMutacao, linhaReparacao, linhaFinal] =
+                linhas.slice(2 + 3 * i, 5 + 3 * i);
 
-            bloco.appendChild(criarElemento(
-                "p", `Filho ${i + 1} após mutação: ${mut.depois}`
-            ));
-            bloco.appendChild(cromossomoVisual(
-                mut.depois, mut.indices, "gene-mutado"
-            ));
-
-            rep.etapas.forEach(etapa => {
-                bloco.appendChild(criarElemento(
-                    "p", `Reparação: removido ${etapa.projeto}`
+            bloco.appendChild(criarElemento("p", linhaMutacao));
+            if (desc.mutacao.indices.length > 0) {
+                bloco.appendChild(cromossomoVisual(
+                    desc.mutacao.depois, desc.mutacao.indices, "gene-mutado"
                 ));
+            }
+
+            bloco.appendChild(criarElemento("p", linhaReparacao));
+            desc.reparacao.etapas.forEach(etapa => {
                 bloco.appendChild(cromossomoVisual(
                     etapa.cromossomo, [etapa.indice], "gene-removido"
                 ));
             });
 
-            bloco.appendChild(criarElemento(
-                "p", `Resultado: ${rep.depois} · Aptidão ${formato(desc.aptidao)}`
-            ));
+            bloco.appendChild(criarElemento("p", linhaFinal));
         });
+
+        if (evento.descendentes.length === 1) {
+            bloco.appendChild(criarElemento("p", linhas.at(-1), "evento-detalhe"));
+        }
 
         painel.appendChild(bloco);
     });
@@ -436,6 +439,64 @@ function atualizarBotoes() {
     $("pausarSimulacao").disabled = temporizador === null;
     $("avancarSimulacao").disabled =
         temporizador !== null || estado.finalizada || bloqueado;
+
+    atualizarControlesAnimacao(estado);
+}
+
+// Animação de uma reprodução real da geração atual
+let geracaoAnimacao = -1;
+let palcoComMensagem = true;
+
+function reproducoesAtuais(estado) {
+    return estado.eventos.filter(evento => evento.tipo === "reproducao");
+}
+
+function resetarAnimacao() {
+    cancelarAnimacao();
+    geracaoAnimacao = -1;
+}
+
+function atualizarControlesAnimacao(estado) {
+    const reproducoes = estado.geracao === 0 ? [] : reproducoesAtuais(estado);
+    const executando = temporizador !== null;
+
+    if (estado.geracao !== geracaoAnimacao) {
+        cancelarAnimacao();
+        geracaoAnimacao = estado.geracao;
+        palcoComMensagem = true;
+
+        $("reproducaoAnimada").replaceChildren(...reproducoes.map((_, i) => {
+            const opcao = criarElemento("option", `Reprodução ${i + 1}`);
+            opcao.value = String(i);
+            return opcao;
+        }));
+    }
+
+    if (palcoComMensagem) {
+        const texto = executando
+            ? "Pause a execução para animar uma reprodução."
+            : reproducoes.length === 0
+                ? "Avance uma geração para animar uma reprodução."
+                : "Escolha uma reprodução e clique em Reproduzir animação.";
+
+        $("palcoAnimacao").replaceChildren(criarElemento("p", texto, "evento-vazio"));
+    }
+
+    const indisponivel = executando || reproducoes.length === 0;
+    $("reproducaoAnimada").disabled = indisponivel;
+    $("reproduzirAnimacao").disabled = indisponivel;
+}
+
+function reproduzirAnimacao(indice = Number($("reproducaoAnimada").value)) {
+    const evento = reproducoesAtuais(obterEstadoSimulacao())[indice];
+    if (!evento || temporizador !== null) return;
+
+    $("reproducaoAnimada").value = String(indice);
+    palcoComMensagem = false;
+
+    animarReproducao($("palcoAnimacao"), evento, {
+        duracaoEtapa: Number($("velocidadeAnimacao").value)
+    });
 }
 
 function atualizarTela() {
@@ -482,10 +543,26 @@ function avancar() {
     }
 }
 
+// Avanço pelo botão: produz uma geração e anima a primeira reprodução
+function avancarComAnimacao() {
+    avancar();
+    if (temporizador === null) reproduzirAnimacao(0);
+}
+
+const intervaloExecucao = () => Number($("velocidadeExecucao").value);
+
 function executar() {
     if ($("executarSimulacao").disabled) return;
-    temporizador = setInterval(avancar, 500);
+    cancelarAnimacao();
+    palcoComMensagem = true;
+    temporizador = setInterval(avancar, intervaloExecucao());
     atualizarTela();
+}
+
+function mudarVelocidadeExecucao() {
+    if (temporizador === null) return;
+    clearInterval(temporizador);
+    temporizador = setInterval(avancar, intervaloExecucao());
 }
 
 function reiniciar() {
@@ -501,6 +578,7 @@ function reiniciar() {
     }
 
     reiniciarSimulacao();
+    resetarAnimacao();
     atualizarTela();
     $("estadoExecucao").textContent = "Geração 0 · Simulação pronta";
 }
@@ -560,8 +638,11 @@ $("orcamento").addEventListener("blur", () => {
 
 $("executarSimulacao").addEventListener("click", executar);
 $("pausarSimulacao").addEventListener("click", pausar);
-$("avancarSimulacao").addEventListener("click", avancar);
+$("avancarSimulacao").addEventListener("click", avancarComAnimacao);
 $("reiniciarSimulacao").addEventListener("click", reiniciar);
+$("velocidadeExecucao").addEventListener("change", mudarVelocidadeExecucao);
+$("reproduzirAnimacao").addEventListener("click", () => reproduzirAnimacao());
+$("reproducaoAnimada").addEventListener("change", () => reproduzirAnimacao());
 
 exibirProjetos();
 preencherConfiguracao();

@@ -567,9 +567,168 @@ button:disabled {
     }
 }
 
+/* Animação da reprodução */
+
+select {
+    font: inherit;
+    color: var(--texto);
+    background: #fff;
+    border: 1px solid #c9c9bf;
+    border-radius: 6px;
+    padding: 9px 10px;
+    max-width: 100%;
+}
+
+.campo-velocidade {
+    display: flex;
+    flex-direction: column;
+    margin-top: 16px;
+    min-width: 0;
+}
+
+.controles-animacao {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0 16px;
+}
+
+.controles-animacao button {
+    margin-top: 16px;
+}
+
+.palco-animacao {
+    --duracao-etapa: 900ms;
+    --distancia-troca: 48px;
+    margin-top: 18px;
+    padding: 16px;
+    min-height: 180px;
+    border: 1px solid var(--borda);
+    border-radius: 8px;
+    background: #fbfaf5;
+    overflow: hidden;
+}
+
+.animacao-contador {
+    margin: 0;
+    font-size: 13px;
+    color: var(--secundario);
+}
+
+.animacao-legenda {
+    margin: 4px 0 12px;
+    font-weight: 600;
+}
+
+.animacao-linhas {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.animacao-linha {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 12px;
+}
+
+.animacao-linha .visualizacao-cromossomo {
+    margin: 0;
+}
+
+.animacao-rotulo {
+    min-width: 170px;
+    font-size: 14px;
+    color: var(--secundario);
+}
+
+.candidato-vencedor .gene {
+    background: var(--destaque);
+    border-color: var(--verde);
+    animation: vencerTorneio calc(var(--duracao-etapa) * .6) ease both;
+}
+
+.candidato-vencedor .animacao-rotulo {
+    color: var(--verde);
+    font-weight: 700;
+}
+
+.candidato-perdedor {
+    opacity: .55;
+}
+
+.segmento-direito {
+    margin-left: 0;
+    animation: abrirCorte calc(var(--duracao-etapa) * .5) ease both;
+}
+
+.segmento-direito:not(.segmento-direito + .segmento-direito) {
+    margin-left: 14px;
+}
+
+.segmento-trocado {
+    background: #e1e8ee;
+    border-color: #687f91;
+}
+
+.veio-de-baixo {
+    animation: trocarDeBaixo calc(var(--duracao-etapa) * .7) ease both;
+}
+
+.veio-de-cima {
+    animation: trocarDeCima calc(var(--duracao-etapa) * .7) ease both;
+}
+
+.gene-virando {
+    animation: virarBit calc(var(--duracao-etapa) * .6) ease both;
+}
+
+.gene-saindo {
+    text-decoration: line-through;
+    animation: removerGene calc(var(--duracao-etapa) * .7) ease both;
+}
+
+@keyframes vencerTorneio {
+    0% { box-shadow: 0 0 0 0 rgba(72, 92, 67, .6); }
+    100% { box-shadow: 0 0 0 4px rgba(72, 92, 67, 0); }
+}
+
+@keyframes abrirCorte {
+    from { transform: translateX(-14px); }
+    to { transform: translateX(0); }
+}
+
+@keyframes trocarDeBaixo {
+    from { transform: translateY(var(--distancia-troca)); }
+    to { transform: translateY(0); }
+}
+
+@keyframes trocarDeCima {
+    from { transform: translateY(calc(var(--distancia-troca) * -1)); }
+    to { transform: translateY(0); }
+}
+
+@keyframes virarBit {
+    0% { transform: rotateX(0); }
+    50% { transform: rotateX(90deg); }
+    100% { transform: rotateX(0); }
+}
+
+@keyframes removerGene {
+    0% { opacity: 1; transform: scale(1.15); }
+    100% { opacity: .55; transform: scale(1); }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .gene-mutado,
-    .gene-removido {
+    .gene-removido,
+    .candidato-vencedor .gene,
+    .segmento-direito,
+    .veio-de-baixo,
+    .veio-de-cima,
+    .gene-virando,
+    .gene-saindo {
         animation: none;
     }
 }
@@ -640,6 +799,22 @@ button:disabled {
         width: 29px;
         height: 34px;
         font-size: 14px;
+    }
+
+    .palco-animacao {
+        --distancia-troca: 66px;
+        padding: 12px;
+    }
+
+    .animacao-rotulo {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .controles-animacao,
+    .controles-animacao button,
+    .campo-velocidade {
+        width: 100%;
     }
 
     th, td {

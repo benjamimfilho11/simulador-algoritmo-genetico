@@ -9,6 +9,8 @@ import {
     selecionarPorTorneio, cruzarCromossomos, mutarCromossomo,
     selecionarElite, gerarProximaGeracao
 } from "./script.js";
+import { descreverReproducao, descreverElitismo } from "./narrativa.js";
+import { etapasAnimacao } from "./animacao.js";
 
 const original = obterConfiguracao();
 let aprovados = 0;
@@ -31,6 +33,32 @@ function testar(nome, funcao) {
 }
 
 const texto = cromossomo => cromossomo.join("");
+
+const evento64 = {
+    tipo: "reproducao",
+    pais: [
+        { candidatos: [], vencedor: 2, cromossomo: "1100" },
+        { candidatos: [], vencedor: 4, cromossomo: "0011" }
+    ],
+    cruzamento: { ocorreu: true, pontoCorte: 2, filhos: ["1111", "0000"] },
+    descendentes: [
+        {
+            mutacao: { antes: "1111", depois: "0111", indices: [0] },
+            reparacao: {
+                antes: "0111", depois: "0100", etapas: [
+                    { indice: 2, projeto: "Aquisição de bancos", cromossomo: "0101" },
+                    { indice: 3, projeto: "Reforma de espaço de convivência", cromossomo: "0100" }
+                ]
+            },
+            aptidao: 5
+        },
+        {
+            mutacao: { antes: "0000", depois: "0000", indices: [] },
+            reparacao: { antes: "0000", depois: "0000", etapas: [] },
+            aptidao: 0
+        }
+    ]
+};
 
 try {
     console.log("\n=== TESTES DO ALGORITMO GENÉTICO ===\n");
@@ -147,6 +175,89 @@ try {
         assert.deepEqual(
             [r.cromossomo, r.custoTotal, r.beneficioTotal, r.saldo, r.aptidao],
             ["1111", 1400000, 23, 0, 23]
+        );
+    });
+
+    testar("Narrativa da reprodução (seção 6.4)", () => {
+        assert.deepEqual(descreverReproducao(evento64), [
+            "Pais: 1100 (indivíduo 3 da geração anterior) e 0011 (indivíduo 5 da geração anterior)",
+            "Cruzamento com corte após o 2º gene: 11|00 + 00|11 → filhos 1111 e 0000",
+            "Mutação no filho 1: gene 1 → 0111",
+            "Reparação do filho 1: 0111 → 0101 → 0100 (removidos: Aquisição de bancos; Reforma de espaço de convivência)",
+            "Filho 1 final: 0100 · aptidão 5",
+            "Filho 2 sem mutação",
+            "Filho 2 sem reparação",
+            "Filho 2 final: 0000 · aptidão 0"
+        ]);
+    });
+
+    testar("Narrativa sem cruzamento e com vaga única", () => {
+        const evento = structuredClone(evento64);
+        evento.cruzamento = { ocorreu: false, pontoCorte: null, filhos: ["1100", "0011"] };
+        evento.descendentes = [{
+            mutacao: { antes: "1100", depois: "1100", indices: [] },
+            reparacao: { antes: "1100", depois: "1100", etapas: [] },
+            aptidao: 12
+        }];
+
+        const linhas = descreverReproducao(evento);
+        assert.equal(linhas[1], "Sem cruzamento: filhos copiam os pais (1100 e 0011)");
+        assert.equal(linhas.at(-1), "Apenas o filho 1 entra na população (última vaga)");
+    });
+
+    testar("Narrativa com vários genes mutados e uma remoção", () => {
+        const evento = structuredClone(evento64);
+        evento.descendentes[0].mutacao = { antes: "1111", depois: "0101", indices: [0, 2] };
+        evento.descendentes[0].reparacao = {
+            antes: "0101", depois: "0100", etapas: [
+                { indice: 3, projeto: "Reforma de espaço de convivência", cromossomo: "0100" }
+            ]
+        };
+
+        const linhas = descreverReproducao(evento);
+        assert.equal(linhas[2], "Mutação no filho 1: genes 1, 3 → 0101");
+        assert.equal(linhas[3], "Reparação do filho 1: 0101 → 0100 (removido: Reforma de espaço de convivência)");
+    });
+
+    testar("Narrativa do elitismo", () => {
+        assert.deepEqual(
+            descreverElitismo({ tipo: "elitismo", individuos: [] }),
+            ["Sem elitismo: nenhum indivíduo preservado"]
+        );
+        assert.deepEqual(
+            descreverElitismo({
+                tipo: "elitismo",
+                individuos: [{ indice: 0, cromossomo: "1100", aptidao: 12 }]
+            }),
+            ["Preservado sem alterações: 1100 (indivíduo 1 da geração anterior) · aptidão 12"]
+        );
+    });
+
+    testar("Etapas da animação refletem o evento", () => {
+        const etapas = etapasAnimacao(evento64);
+
+        assert.deepEqual(etapas.map(e => e.tipo), [
+            "torneio", "torneio", "corte", "troca",
+            "mutacao", "reparacao", "reparacao", "resultado"
+        ]);
+        assert.deepEqual(etapas[4].indices, [0]);
+        assert.equal(etapas[4].filho, 1);
+        assert.deepEqual(
+            etapas.filter(e => e.tipo === "reparacao").map(e => e.cromossomo),
+            ["0101", "0100"]
+        );
+        assert.deepEqual(etapas.at(-1).filhos, [
+            { cromossomo: "0100", aptidao: 5 },
+            { cromossomo: "0000", aptidao: 0 }
+        ]);
+
+        const semCruzamento = structuredClone(evento64);
+        semCruzamento.cruzamento = { ocorreu: false, pontoCorte: null, filhos: ["1100", "0011"] };
+        semCruzamento.descendentes = [semCruzamento.descendentes[1]];
+
+        assert.deepEqual(
+            etapasAnimacao(semCruzamento).map(e => e.tipo),
+            ["torneio", "torneio", "copia", "resultado"]
         );
     });
 
