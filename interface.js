@@ -526,23 +526,32 @@ $("desfazerProjetos").addEventListener("click", () => {
     mensagem("mensagemProjetos", "Alterações desfeitas.");
 });
 
-campos.forEach(id => {
-    $(id).addEventListener("input", () => {
-        pausar();
-        configuracaoPendente = true;
-        atualizarBotoes();
-        mensagem("mensagemConfiguracao", "Existem alterações pendentes.");
-    });
+function configuracaoDiferente() {
+    try {
+        const lida = lerConfiguracao();
+        const atual = obterConfiguracao();
+        return Object.keys(lida).some(chave => lida[chave] !== atual[chave]);
+    } catch {
+        return true;
+    }
+}
 
+function registrarEdicaoConfiguracao() {
+    pausar();
+    configuracaoPendente = configuracaoDiferente();
+    mensagem(
+        "mensagemConfiguracao",
+        configuracaoPendente ? "Existem alterações pendentes." : ""
+    );
+    atualizarBotoes();
+}
+
+campos.forEach(id => {
+    $(id).addEventListener("input", registrarEdicaoConfiguracao);
     $(id).addEventListener("change", aplicarConfiguracao);
 });
 
-$("orcamento").addEventListener("input", () => {
-    pausar();
-    configuracaoPendente = true;
-    validarOrcamento();
-    atualizarBotoes();
-});
+$("orcamento").addEventListener("input", registrarEdicaoConfiguracao);
 
 $("orcamento").addEventListener("change", aplicarConfiguracao);
 $("orcamento").addEventListener("blur", () => {

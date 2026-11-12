@@ -154,19 +154,23 @@ A execução encontrou a solução ótima de referência, formada pelos projetos
 
 Foram comparadas as taxas de 1% e 20%, mantendo os demais parâmetros da execução completa e utilizando as sementes 1, 2, 3, 4 e 5.
 
-| Semente | Mutação 1% | Mutação 20% |
-|---|---:|---:|
-| 1 | 12 | 12 |
-| 2 | 12 | 12 |
-| 3 | 12 | 12 |
-| 4 | 12 | 12 |
-| 5 | 12 | 12 |
-| **Média** | **12** | **12** |
-| **Execuções com aptidão 12** | **5** | **5** |
+Além do melhor benefício final, foram registradas a geração em que esse melhor foi encontrado, a aptidão média da população na geração 50 e quantos dos 20 indivíduos finais correspondem ao ótimo `1100`.
 
-As duas taxas encontraram o benefício ótimo em todas as execuções.
+| Semente | Melhor (1%) | Melhor (20%) | Geração do melhor (1% / 20%) | Aptidão média final (1%) | Aptidão média final (20%) | Cópias de `1100` no fim (1%) | Cópias de `1100` no fim (20%) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 12 | 12 | 0 / 0 | 12 | 8,85 | 20 | 10 |
+| 2 | 12 | 12 | 0 / 0 | 12 | 9,10 | 20 | 12 |
+| 3 | 12 | 12 | 0 / 0 | 12 | 10,25 | 20 | 14 |
+| 4 | 12 | 12 | 0 / 0 | 12 | 9,60 | 20 | 13 |
+| 5 | 12 | 12 | 0 / 0 | 12 | 10,20 | 20 | 13 |
+| **Média** | **12** | **12** | — | **12** | **9,60** | **20** | **12,4** |
+| **Execuções com aptidão 12** | **5** | **5** | | | | | |
 
-Nesse conjunto pequeno de projetos, não foi observada diferença no melhor benefício final entre as taxas analisadas. Isso não significa que ambas apresentem o mesmo desempenho em problemas maiores ou com outras características.
+**Melhor benefício final.** As duas taxas atingiram 12 nas cinco execuções, mas esse resultado não permite concluir que elas sejam equivalentes: em todas as dez execuções o ótimo `1100` já estava presente na população inicial (geração 0). Com apenas 4 projetos há 16 cromossomos possíveis, e uma população de 20 indivíduos sorteados ao acaso, já reparados, quase sempre contém o ótimo. A partir daí, o elitismo (1 indivíduo) garante que ele nunca seja perdido, independentemente da taxa de mutação. Nesta instância, portanto, o melhor benefício final não mede o efeito da mutação.
+
+**Comportamento da população.** A diferença aparece na população final. Com mutação de 1%, a seleção por torneio e o cruzamento espalham o ótimo por toda a população: nas cinco execuções, os 20 indivíduos da geração 50 são `1100` e a aptidão média é 12, ou seja, a população convergiu. Com 20%, cada gene tem uma chance em cinco de ser invertido, e um filho de dois pais `1100` só permanece `1100` com probabilidade 0,8⁴ ≈ 41%. A mutação desfaz continuamente as boas soluções, a aptidão média fica em torno de 9,6 e apenas cerca de 12 dos 20 indivíduos são ótimos.
+
+**Interpretação.** Uma taxa baixa favorece a exploração das boas soluções já encontradas (convergência rápida); uma taxa alta mantém a diversidade e favorece a exploração de novas regiões do espaço de busca, ao custo de degradar a população. Neste problema pequeno, a diversidade extra não traz benefício, porque o ótimo é encontrado logo no início. Em instâncias maiores (por exemplo, 15 projetos, com 32.768 combinações), em que a população inicial dificilmente contém o ótimo, uma taxa baixa pode levar à convergência prematura em uma solução subótima, e uma taxa maior pode ajudar a escapar dela. Por isso, não se pode afirmar que uma taxa seja sempre superior à outra.
 
 ### Limites de orçamento
 
@@ -180,6 +184,6 @@ Os dois testes foram aprovados.
 
 Os testes automatizados confirmaram o funcionamento dos principais operadores do algoritmo genético e o respeito às restrições de orçamento.
 
-Na configuração de referência, o simulador encontrou a solução ótima, com benefício 12. A comparação entre as taxas de mutação de 1% e 20% não apresentou diferenças nos melhores resultados finais para as sementes utilizadas.
+Na configuração de referência, o simulador encontrou a solução ótima, com benefício 12. Na comparação entre as taxas de mutação de 1% e 20%, o melhor resultado final foi o mesmo, pois o ótimo já estava na população inicial em todas as execuções. A taxa de 20% manteve a população mais diversa e com aptidão média menor (9,6 contra 12).
 
 O simulador permite acompanhar a evolução das soluções e observar como os operadores genéticos atuam na seleção dos projetos.

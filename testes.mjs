@@ -157,18 +157,30 @@ try {
 
         for (let semente = 1; semente <= 5; semente++) {
             configurar({ taxaMutacao: taxa, semente });
+            const execucao = executarAlgoritmo();
+
             resultados.push({
                 semente,
-                melhor: executarAlgoritmo().melhorSolucao.aptidao
+                melhor: execucao.melhorSolucao.aptidao,
+                geracaoDoMelhor: execucao.melhorSolucao.geracao,
+                mediaFinal: execucao.historico.at(-1).aptidaoMedia,
+                copiasDoOtimoNaPopulacaoFinal: execucao.populacaoFinal
+                    .filter(c => texto(c) === "1100").length
             });
         }
 
-        const media = resultados.reduce((soma, r) => soma + r.melhor, 0) / 5;
+        const mediaDe = campo =>
+            resultados.reduce((soma, r) => soma + r[campo], 0) / resultados.length;
         const otimos = resultados.filter(r => r.melhor === 12).length;
 
         console.log(`Mutação ${taxa}%`);
         console.table(resultados);
-        console.log(`Média: ${media} | Execuções com aptidão 12: ${otimos}\n`);
+        console.log(
+            `Média do melhor: ${mediaDe("melhor")} | ` +
+            `Execuções com aptidão 12: ${otimos} | ` +
+            `Média da aptidão média final: ${mediaDe("mediaFinal").toFixed(2)} | ` +
+            `Média de cópias do ótimo: ${mediaDe("copiasDoOtimoNaPopulacaoFinal")}\n`
+        );
     }
 
     console.log(`${aprovados} grupos de testes aprovados.`);
